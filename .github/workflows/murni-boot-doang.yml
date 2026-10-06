@@ -1,59 +1,49 @@
-name: Build Droidian Halium Boot Vince
+name: Murni Rakit Boot Vince
 
 on:
   workflow_dispatch:
 
 jobs:
-  build-kernel:
+  porting-boot:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Konfigurasi Vince
+      - name: Ambil Bahan Dari Repo
         uses: actions/checkout@v4
-        with:
-          path: config-repo
 
-      - name: Jalankan Proses Porting Ramdisk di Server
+      - name: Proses Tukar Ramdisk Halium
         run: |
           H="https://"
           A="raw.github"
           B="usercontent.com"
           
-          # Unduh biner mkbootimg resmi langsung di server GitHub
+          # Ambil alat tempur resmi
           curl -sLo unpackbootimg "${H}${A}${B}/osm0sis/mkbootimg/master/unpackbootimg" && chmod +x unpackbootimg
           curl -sLo mkbootimg "${H}${A}${B}/osm0sis/mkbootimg/master/mkbootimg" && chmod +x mkbootimg
           
           mkdir -p ori halium ramdisk_halium ramdisk_ori out_boot
           
-          # Mengambil file boot yang di-upload dari lokal HP Anda
-          cp config-repo/boot.img ./
-          cp config-repo/halium-boot.img ./
-
-          # Bongkar kedua file image
+          # Eksekusi pembongkaran bahan yang sudah Anda upload
           ./unpackbootimg -i boot.img -o ori/
           ./unpackbootimg -i halium-boot.img -o halium/
 
-          # Ekstrak ramdisk sistem halium
-          cd ramdisk_halium
-          gzip -d -c ../halium/ramdisk | cpio -i 2>/dev/null
-          
-          # Ekstrak ramdisk asli vince
-          cd ../ori/ramdisk_ori
-          gzip -d -c ../ramdisk | cpio -i 2>/dev/null
+          # Bongkar ramdisk halium dan ramdisk ori vince
+          cd ramdisk_halium && gzip -d -c ../halium/ramdisk | cpio -i 2>/dev/null
+          cd ../ori/ramdisk_ori && gzip -d -c ../ramdisk | cpio -i 2>/dev/null
 
-          # PROSES PORTING: Suntikkan komponen utama Halium ke ramdisk vince
+          # Suntikkan komponen halium
           cp -rf ../../ramdisk_halium/init* ./
           cp -rf ../../ramdisk_halium/sbin* ./ 2>/dev/null || true
           cp -rf ../../ramdisk_halium/lib* ./ 2>/dev/null || true
 
-          # Kemas kembali ramdisk hasil modifikasi
+          # Bungkus ulang ramdisk porting
           find . | cpio -o -H newc 2>/dev/null | gzip > ../ramdisk_new
           cd ..
 
-          # Rakit menjadi berkas tunggal menggunakan parameter asli HP Anda
+          # Rakit final menjadi file tunggal halium-boot-vince.img
           ./mkbootimg --kernel kernel --ramdisk ramdisk_new --dtb dtb --cmdline "$(cat cmdline)" --base $(cat base) --pagesize $(cat pagesize) --kernel_offset $(cat kernel_offset) --ramdisk_offset $(cat ramdisk_offset) --tags_offset $(cat tags_offset) -o ../out_boot/halium-boot-vince.img
 
-      - name: Unggah HANYA Berkas halium-boot.img Hasil Porting
+      - name: Unggah Hasil Boot .img Ukuran Kecil
         uses: actions/upload-artifact@v4
         with:
-          name: Murni-Boot-Vince-Port
+          name: Hasil-Boot-Vince-Murni
           path: out_boot/halium-boot-vince.img
