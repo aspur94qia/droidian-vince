@@ -59,6 +59,10 @@ jobs:
           export HOSTCFLAGS="-w -std=gnu89"
           export HOSTCXXFLAGS="-w"
           
+          # FIX UTAMA: Mematikan modul Bluetooth penyebab eror langsung dari file defconfig asli
+          sed -i 's/CONFIG_MSM_BTFM_SLIM=y/CONFIG_MSM_BTFM_SLIM=n/' arch/arm64/configs/msm8953_defconfig
+          sed -i 's/CONFIG_MSM_BTFM_SLIM_WCN3990=y/CONFIG_MSM_BTFM_SLIM_WCN3990=n/' arch/arm64/configs/msm8953_defconfig
+          
           make msm8953_defconfig
           
           # Mematikan proteksi compiler stack protector yang konflik
@@ -66,8 +70,8 @@ jobs:
           sed -i 's/CONFIG_CC_STACKPROTECTOR_REGULAR=y/# CONFIG_CC_STACKPROTECTOR_REGULAR is not set/' .config
           echo "CONFIG_CC_STACKPROTECTOR_NONE=y" >> .config
           
-          # FIX ERROR: Mematikan driver btfm_slim yang kehilangan file header btfm_slim.h
-          sed -i 's/CONFIG_MSM_BTFM_SLIM=y/# CONFIG_MSM_BTFM_SLIM is not set/' .config
+          # Pastikan sekali lagi di file .config aktif
+          sed -i 's/CONFIG_MSM_BTFM_SLIM=y/CONFIG_MSM_BTFM_SLIM=n/' .config
           
           # Eksekusi kompilasi aman dan murni menggunakan Google GCC resmi
           make -j$(nproc) HOSTCFLAGS="$HOSTCFLAGS" HOSTCXXFLAGS="$HOSTCXXFLAGS" KCFLAGS="$KCFLAGS"
