@@ -44,20 +44,24 @@ jobs:
           export ARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
           
-          # Membersihkan bendera hantu dan hanya menyisakan peredam error resmi yang valid
-          export KCFLAGS="-fno-pic -Wno-pointer-sign -Wno-format -Wno-error=unused-but-set-variable -Wno-error=packed-not-aligned -Wno-error=maybe-uninitialized -Wno-error=misleading-indentation"
+          # Bendera penjinak compiler GCC 11 global
+          export KCFLAGS="-fno-pic -Wno-pointer-sign -Wno-format -Wno-error=unused-but-set-variable -Wno-error=packed-not-aligned -Wno-error=maybe-uninitialized -Wno-error=misleading-indentation -Wno-error=array-bounds -Wno-error=stringop-overread"
           
           export HOSTCFLAGS="-Wno-error -std=gnu89"
           export HOSTCXXFLAGS="-Wno-error"
           
           make msm8953_defconfig
           
-          # Mematikan proteksi compiler yang konflik
+          # 1. Mematikan proteksi compiler stack protector yang konflik
           sed -i 's/CONFIG_CC_STACKPROTECTOR_STRONG=y/# CONFIG_CC_STACKPROTECTOR_STRONG is not set/' .config
           sed -i 's/CONFIG_CC_STACKPROTECTOR_REGULAR=y/# CONFIG_CC_STACKPROTECTOR_REGULAR is not set/' .config
           echo "CONFIG_CC_STACKPROTECTOR_NONE=y" >> .config
           
-          # Eksekusi kompilasi aman
+          # 2. Trik Utama: Mematikan total modul SDFAT penyebab eror di menit ke-3
+          sed -i 's/CONFIG_SDFAT_FS=y/# CONFIG_SDFAT_FS is not set/' .config
+          sed -i 's/CONFIG_SDFAT_DELAYED_ALLOCATION=y/# CONFIG_SDFAT_DELAYED_ALLOCATION is not set/' .config
+          
+          # Eksekusi kompilasi dengan setelan bersih
           make -j$(nproc) HOSTCFLAGS="$HOSTCFLAGS" HOSTCXXFLAGS="$HOSTCXXFLAGS" KCFLAGS="$KCFLAGS"
           
           if [ -f arch/arm64/boot/Image.gz-dtb ]; then
