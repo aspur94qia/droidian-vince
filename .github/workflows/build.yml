@@ -40,10 +40,9 @@ jobs:
           aria2c -s 16 -x 16 -k 1M -o droidian_source.zip \
             "${H}${A}${B}/droidian-images/droidian/releases/download/droidian%2F101.20251130/droidian-OFFICIAL-phosh-phone-rootfs-api29-arm64-101.20251130_20251207.zip"
           
+          # Mengekstrak berkas (.img di dalamnya otomatis sudah bernama rootfs.img)
           unzip -j droidian_source.zip "*.img" -d tmp_workspace/
           rm -f droidian_source.zip
-          
-          mv tmp_workspace/*.img tmp_workspace/rootfs.img
           
           # =========================================================================
           # LANGKAH KUNCI: POTONG RUANG KOSONG DI DALAM ROOTFS JADI ULTRA RAMPING
