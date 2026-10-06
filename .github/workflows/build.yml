@@ -48,24 +48,26 @@ jobs:
           mkdir -p output
           GCC_DIR=$(pwd)/toolchain-64/bin
           
-          # =========================================================================
-          # SOLUSI PERMANEN PYTHON: Paksa sistem membaca Python 2 murni
-          # =========================================================================
+          # SOLUSI PYTHON: Paksa sistem membaca Python 2 murni
           mkdir -p bin_bin
           ln -sf /usr/bin/python2 bin_bin/python
           export PATH=$(pwd)/bin_bin:$PATH
-          # =========================================================================
           
           cd kernel
           
-          # Mengunci arsitektur target ke Google GCC resmi Android
           export ARCH=arm64
           export CROSS_COMPILE=$GCC_DIR/aarch64-linux-android-
           
-          # Bendera peredam error teks kode kernel msm8953
           export KCFLAGS="-fno-pic -w"
           export HOSTCFLAGS="-w -std=gnu89"
           export HOSTCXXFLAGS="-w"
+          
+          # =========================================================================
+          # PERBAIKAN AUDIO: Matikan modul audio penyebab eror sebelum defconfig di-load
+          # =========================================================================
+          sed -i 's/CONFIG_SOUND=y/CONFIG_SOUND=n/' arch/arm64/configs/msm8953_defconfig
+          sed -i 's/CONFIG_SND=y/CONFIG_SND=n/' arch/arm64/configs/msm8953_defconfig
+          # =========================================================================
           
           make msm8953_defconfig
           
@@ -73,6 +75,10 @@ jobs:
           sed -i 's/CONFIG_CC_STACKPROTECTOR_STRONG=y/# CONFIG_CC_STACKPROTECTOR_STRONG is not set/' .config
           sed -i 's/CONFIG_CC_STACKPROTECTOR_REGULAR=y/# CONFIG_CC_STACKPROTECTOR_REGULAR is not set/' .config
           echo "CONFIG_CC_STACKPROTECTOR_NONE=y" >> .config
+          
+          # Pastikan sekali lagi di file runtime .config
+          sed -i 's/CONFIG_SOUND=y/CONFIG_SOUND=n/' .config
+          sed -i 's/CONFIG_SND=y/CONFIG_SND=n/' .config
           
           # Eksekusi kompilasi murni Android 12 menggunakan lingkungan Python 2 asli
           make -j$(nproc) HOSTCFLAGS="$HOSTCFLAGS" HOSTCXXFLAGS="$HOSTCXXFLAGS" KCFLAGS="$KCFLAGS"
