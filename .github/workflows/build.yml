@@ -38,7 +38,6 @@ jobs:
 
       - name: Download Official Proton Clang Toolchain
         run: |
-          # Mengunduh compiler Proton Clang resmi yang dioptimalkan khusus untuk kernel Android msm8953
           H="https://"
           A="git"
           B="hub.com"
@@ -63,8 +62,8 @@ jobs:
           sed -i 's/CONFIG_CC_STACKPROTECTOR_REGULAR=y/# CONFIG_CC_STACKPROTECTOR_REGULAR is not set/' .config
           echo "CONFIG_CC_STACKPROTECTOR_NONE=y" >> .config
           
-          # Jalankan kompilasi menggunakan Proton Clang (CC=clang) untuk membypass error GCC audio secara total
-          make -j$(nproc) CC=clang AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip
+          # SOLUSI: Menggunakan Proton Clang (CC=clang) tetapi memaksa assembler menggunakan GNU bawaan Ubuntu agar mengenali -EL
+          make -j$(nproc) CC=clang HOSTCC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi-
           
           if [ -f arch/arm64/boot/Image.gz-dtb ]; then
             cp arch/arm64/boot/Image.gz-dtb ../output/boot.img
