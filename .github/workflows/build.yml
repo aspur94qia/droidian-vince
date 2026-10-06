@@ -15,7 +15,6 @@ jobs:
       
       - name: Clone Droidian Build Tools
         run: |
-          # Memotong huruf g dari h secara total
           H="https://"
           A="git"
           B="hub.com"
@@ -33,7 +32,8 @@ jobs:
           H="https://"
           A="git"
           B="hub.com"
-          git clone --depth=1 "${H}${A}${B}/Halium/android_kernel_xiaomi_msm8953.git" -b halium-9.0 kernel
+          # Mengganti ke repositori kernel msm8953 publik yang aktif
+          git clone --depth=1 "${H}${A}${B}/LineageOS/android_kernel_xiaomi_msm8953.git" -b lineage-18.1 kernel
           
       - name: Compile Boot Image
         run: |
