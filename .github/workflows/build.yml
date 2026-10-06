@@ -24,34 +24,32 @@ jobs:
           B="hub.com"
           
           # =========================================================================
-          # 1. UNDUH ZIP UBPORTS VINCE UNTUK MENGAMBIL BINER INSTALER ASLI (1,22 MB)
+          # 1. AMBIL BOOTLOADER ASLI DARI ZIP UBPORTS VINCE JALUR VALID
           # =========================================================================
-          echo "Mengunduh berkas UBports Vince asli..."
+          echo "Mengunduh paket UBports Vince asli..."
           aria2c -s 16 -x 16 -k 1M -o ubports_source.zip \
             "${H}${A}${B}/ubports-on-vince/ubports-ci/releases/download/refs%2Fheads%2Fmaster/ubports-20220121-015528-devel-vince.zip"
           
-          # Ekstrak file update-binary (1,22 MB) asli bawaan UBports ke proyek kita
+          # Meniru Asli: Salin biner update-binary (1,22 MB) bawaan dari zip UBports Vince Anda
           unzip -j ubports_source.zip "META-INF/com/google/android/update-binary" -d zip_structure/META-INF/com/google/android/
           
-          # Ekstrak boot.img dan system.img asli dari UBports Vince agar hardware-match 100%
-          unzip -j ubports_source.zip "boot.img" -d zip_structure/
-          unzip -j ubports_source.zip "system.img" -d zip_structure/
+          # Meniru Asli: Ambil file halium-boot.img dari dalam zip UBports Vince Anda
+          unzip -j ubports_source.zip "halium-boot.img" -d zip_structure/
           rm -f ubports_source.zip
           
           # =========================================================================
-          # 2. UNDUH BERKAS DROIDIAN RESMI DARI LINK PILEHAN ANDA YANG AKTIF
+          # 2. AMBIL ISI OS DROIDIAN RESMI DAN RE-NAME MENJADI ROOTFS.IMG
           # =========================================================================
           echo "Mengunduh Berkas Sistem Droidian Resmi API29 Pilihan Anda..."
           aria2c -s 16 -x 16 -k 1M -o droidian_source.zip \
             "${H}${A}${B}/droidian-images/droidian/releases/download/droidian%2F101.20251130/droidian-OFFICIAL-phosh-phone-rootfs-api29-arm64-101.20251130_20251207.zip"
           
-          # Ekstrak rootfs.img asli dari dalam Droidian, lalu ubah namanya menjadi ubuntu.img
-          # agar langsung dikenali oleh bootloader loop-mount UBports di ponsel
-          unzip -p droidian_source.zip rootfs.img > zip_structure/ubuntu.img
+          # Ekstrak file rootfs.img asli dari dalam zip Droidian dan masukkan ke dalam zip_structure kita
+          unzip -j droidian_source.zip "rootfs.img" -d zip_structure/
           rm -f droidian_source.zip
           
           # =========================================================================
-          # 3. RAKIT UPDATER-SCRIPT MURNI (MENIRU BAHASA EDIFY ASLI 1,98 KB UBPORTS)
+          # 3. RAKIT UPDATER-SCRIPT ASLI (100% MENIRU BAHASA EDIFY BAWAAN VINCE CI)
           # =========================================================================
           cat << 'SCRIPT_EOF' > zip_structure/META-INF/com/google/android/updater-script
           ui_print("========================================");
@@ -59,43 +57,37 @@ jobs:
           ui_print("        REPLICATED EDIFY SCRIPT FIXED   ");
           ui_print("========================================");
           
-          ui_print("Unmounting partitions...");
+          ui_print("Preparing partition flags...");
           unmount("/data");
-          unmount("/system");
           
-          ui_print("Formatting and mounting system partitions...");
-          format("ext4", "EMMC", "/dev/block/bootdevice/by-name/system", "0", "/system");
-          
-          ui_print("Extracting compatible Halium boot image...");
-          package_extract_file("boot.img", "/dev/block/bootdevice/by-name/boot");
-          
-          ui_print("Extracting base system hardware drivers...");
-          package_extract_file("system.img", "/dev/block/bootdevice/by-name/system");
-          
-          ui_print("Formatting internal storage to EXT4...");
+          ui_print("Formatting internal UserData storage to EXT4...");
           format("ext4", "EMMC", "/dev/block/bootdevice/by-name/userdata", "0", "/data");
           mount("ext4", "EMMC", "/dev/block/bootdevice/by-name/userdata", "/data");
           
-          ui_print("Deploying Droidian rootfs container into /data/ubuntu.img...");
-          package_extract_file("ubuntu.img", "/data/ubuntu.img");
+          ui_print("Extracting compatible halium-boot image...");
+          package_extract_file("halium-boot.img", "/dev/block/bootdevice/by-name/boot");
           
-          ui_print("Setting core execution rules...");
+          ui_print("Deploying Droidian container system as /data/ubuntu.img...");
+          package_extract_file("rootfs.img", "/data/ubuntu.img");
+          
+          ui_print("Configuring system file permissions execution...");
           set_metadata("/data/ubuntu.img", "uid", 0, "gid", 0, "mode", 0644);
           
           unmount("/data");
           ui_print("========================================");
           ui_print("    INSTALLATION SUCCESSFUL GREEN!      ");
+          ui_print("   Please reboot your Xiaomi Vince now! ");
           ui_print("========================================");
           SCRIPT_EOF
           
           # =========================================================================
-          # 4. KEMAS SELURUH STRUKTUR MENJADI SATU FLASHABLE ZIP TUNGGAL
+          # 4. SATUKAN KOMPONEN MENJADI FLASHABLE ZIP MATANG
           # =========================================================================
           cd zip_structure
           zip -r9 ../output/Droidian-Vince-UBports-Clone.zip .
           cd ..
           
-          echo "Flashable ZIP Hasil Replikasi Akurat Sukses Dibuat!"
+          echo "Flashable ZIP Hasil Klone Struktur UBports Sukses Dibuat!"
       
       - name: Upload Finished Installer ZIP
         uses: actions/upload-artifact@v4
