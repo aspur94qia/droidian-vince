@@ -3,7 +3,6 @@ on:
   workflow_dispatch:
 jobs:
   build:
-    # Memaksa menggunakan Ubuntu 22.04 untuk menghindari konflik package compiler
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout Repository
@@ -12,9 +11,10 @@ jobs:
       - name: Setup Build Environment
         run: |
           sudo apt-get update
+          # Menghapus g++-multilib dan gcc-multilib untuk menyelesaikan konflik dependency
           sudo apt-get install -y qemu-user-static debootstrap arch-test git aria2 \
-            bc bison build-essential ccache flex g++-multilib gcc-multilib libssl-dev \
-            libcrypto++-dev u-boot-tools libncurses5-dev crossbuild-essential-arm64
+            bc bison build-essential ccache flex libssl-dev libcrypto++-dev \
+            u-boot-tools libncurses5-dev crossbuild-essential-arm64
       
       - name: Clone Droidian Build Tools
         run: |
@@ -55,7 +55,7 @@ jobs:
       
       - name: Generate Droidian Rootfs & GSI Image
         run: |
-          # Mengalokasikan ruang berkas sistem nyata GSI tiruan (2GB) sebelum dibungkus rootfs penuh
+          # Mengalokasikan file image tiruan berkapasitas 2GB sebelum dibungkus rootfs penuh
           dd if=/dev/zero of=output/droidian_gsi_vince.img bs=1M count=2048
           echo "Rootfs Droidian A13 berhasil dikompilasi!" >> output/droidian_gsi_vince.img
       
