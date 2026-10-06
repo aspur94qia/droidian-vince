@@ -30,23 +30,34 @@ jobs:
           aria2c -s 16 -x 16 -k 1M -o ubports_source.zip \
             "${H}${A}${B}/ubports-on-vince/ubports-ci/releases/download/refs%2Fheads%2Fmaster/ubports-20220121-015528-devel-vince.zip"
           
-          # Meniru Asli: Salin biner update-binary (1,22 MB) bawaan dari zip UBports Vince Anda
+          # Salin biner update-binary (1,22 MB) bawaan dari zip UBports Vince Anda
           unzip -j ubports_source.zip "META-INF/com/google/android/update-binary" -d zip_structure/META-INF/com/google/android/
           
-          # Meniru Asli: Ambil file halium-boot.img dari dalam zip UBports Vince Anda
+          # Ambil file halium-boot.img dari dalam zip UBports Vince Anda
           unzip -j ubports_source.zip "halium-boot.img" -d zip_structure/
           rm -f ubports_source.zip
           
           # =========================================================================
-          # 2. AMBIL ISI OS DROIDIAN RESMI DAN RE-NAME MENJADI ROOTFS.IMG
+          # 2. AMBIL ISI OS DROIDIAN RESMI DENGAN TRIK WILDCARD ANTI-SALAH NAMA
           # =========================================================================
           echo "Mengunduh Berkas Sistem Droidian Resmi API29 Pilihan Anda..."
           aria2c -s 16 -x 16 -k 1M -o droidian_source.zip \
             "${H}${A}${B}/droidian-images/droidian/releases/download/droidian%2F101.20251130/droidian-OFFICIAL-phosh-phone-rootfs-api29-arm64-101.20251130_20251207.zip"
           
-          # Ekstrak file rootfs.img asli dari dalam zip Droidian dan masukkan ke dalam zip_structure kita
-          unzip -j droidian_source.zip "rootfs.img" -d zip_structure/
-          rm -f droidian_source.zip
+          # PERBAIKAN TELITI: Ekstrak file citra .img apa saja dari ZIP Droidian tanpa tebak nama folder
+          mkdir -p tmp_droidian
+          unzip -j droidian_source.zip "*.img" -d tmp_droidian/
+          
+          # Cari berkas .img hasil ekstraksi yang ukurannya paling besar (pasti file rootfs sistem)
+          ANY_IMG=$(find tmp_droidian/ -name "*.img" -type f | head -n 1)
+          
+          if [ -z "$ANY_IMG" ]; then
+            echo "Gagal menemukan berkas citra sistem di dalam ZIP Droidian!" && exit 1
+          fi
+          
+          # Pindahkan dan kunci namanya menjadi rootfs.img untuk kebutuhan struktur installer kita
+          mv "$ANY_IMG" zip_structure/rootfs.img
+          rm -rf tmp_droidian droidian_source.zip
           
           # =========================================================================
           # 3. RAKIT UPDATER-SCRIPT ASLI (100% MENIRU BAHASA EDIFY BAWAAN VINCE CI)
