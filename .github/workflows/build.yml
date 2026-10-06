@@ -19,28 +19,28 @@ jobs:
           mkdir -p zip_structure/META-INF/com/google/android
           mkdir -p zip_structure/images
           
-          # Mengunci format pemisah string anti-blokir lama Anda untuk keamanan repositori
+          # Mengunci format pemisah string anti-blokir asli milik Anda
           H="https://"
           A="git"
           B="hub.com"
           
           # =========================================================================
-          # PERBAIKAN TAUTAN MUTLAK: Mengunduh Berkas ZIP Resmi Temuan Anda
+          # PERBAIKAN STRUKTUR LINK: Menggabungkan variabel H, A, dan B dengan benar
           # =========================================================================
           echo "Mengunduh Berkas Sistem Droidian Resmi API29 Temuan Anda..."
           aria2c -s 16 -x 16 -k 1M -o zip_structure/images/droidian_system.zip \
-            "${H}://github.com"
+            "${H}${A}${B}/droidian-images/droidian/releases/download/v101.20251130_20251207/droidian-OFFICIAL-phosh-phone-rootfs-api29-arm64-101.20251130_20251207.zip"
           
           echo "Mengunduh komponen Boot Halium Resmi..."
           aria2c -s 16 -x 16 -k 1M -o zip_structure/images/boot.img \
-            "${H}://github.com"
+            "${H}${A}${B}/droidian-images/droidian/releases/download/v101.20251130_20251207/boot-halium-generic-arm64.img"
           # =========================================================================
             
-          # 3. Buat file Vendor Image dummy esensial untuk memicu bypass aturan flashing TWRP
+          # Buat file Vendor Image dummy esensial untuk memicu bypass aturan flashing TWRP
           echo "Membuat Driver Vendor penyesuai..."
           dd if=/dev/zero of=zip_structure/images/vendor.img bs=1M count=32
           
-          # 4. BUAT UPDATE-BINARY BERBASIS SHELL SCRIPT ASLI (100% Kebaca di TWRP Tanpa Error 6)
+          # BUAT UPDATE-BINARY BERBASIS SHELL SCRIPT ASLI (100% Kebaca di TWRP Tanpa Error 6)
           cat << 'BIN_EOF' > zip_structure/META-INF/com/google/android/update-binary
           #!/sbin/sh
           OUTFD=$2
@@ -102,7 +102,7 @@ jobs:
           # Membuat updater-script kosong sebagai penanda wajib pembacaan biner TWRP
           echo "# Dummy installer script" > zip_structure/META-INF/com/google/android/updater-script
           
-          # 5. Satukan struktur direktori instalasi menjadi berkas ZIP flashable tunggal
+          # Satukan struktur direktori instalasi menjadi berkas ZIP flashable tunggal
           cd zip_structure
           zip -r9 ../output/Droidian-Vince-Phosh-Installer.zip .
           cd ..
