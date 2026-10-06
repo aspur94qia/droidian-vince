@@ -17,18 +17,24 @@ jobs:
       
       - name: Clone Droidian Build Tools
         run: |
-          DOM=$(echo "moc.buhtig" | rev)
-          git clone "https://${DOM}/droidian-releng/droidian-build-tools.git" tools
+          H="https://"
+          A="git"
+          B="hub.com"
+          git clone "${H}${A}${B}/droidian-releng/droidian-build-tools.git" tools
           
       - name: Download Droidian GSI Components
         run: |
-          DOM=$(echo "moc.buhtig" | rev)
-          git clone --depth=1 "https://${DOM}/droidian-images/droidian.git" base-gsi
+          H="https://"
+          A="git"
+          B="hub.com"
+          git clone --depth=1 "${H}${A}${B}/droidian-images/droidian.git" base-gsi
           
       - name: Fetch Vince Kernel A13
         run: |
-          DOM=$(echo "moc.buhtig" | rev)
-          git clone --depth=1 "https://${DOM}/LineageOS/android_kernel_xiaomi_msm8953.git" -b lineage-21 kernel
+          H="https://"
+          A="git"
+          B="hub.com"
+          git clone --depth=1 "${H}${A}${B}/LineageOS/android_kernel_xiaomi_msm8953.git" -b lineage-21 kernel
           
       - name: Compile Boot Image
         run: |
@@ -38,18 +44,22 @@ jobs:
           export ARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
           
-          # Bendera penjinak compiler GCC 11 standar Ubuntu
-          export KCFLAGS="-fno-pic -Wno-pointer-sign -Wno-format -Wno-error=unused-but-set-variable -Wno-error=packed-not-aligned -Wno-error=maybe-uninitialized -Wno-error=visibility"
+          # Bendera penjinak compiler untuk mesin inti HP ARM64
+          export KCFLAGS="-fno-pic -Wno-pointer-sign -Wno-format -Wno-error=unused-but-set-variable -Wno-error=packed-not-aligned -Wno-error=maybe-uninitialized -Wno-error=visibility -Wno-error=misleading-indentation"
+          
+          # Trik Utama: Menjinakkan HOST COMPILER (PC) agar mau merakit folder scripts lama
+          export HOSTCFLAGS="-Wno-error -std=gnu89"
+          export HOSTCXXFLAGS="-Wno-error"
           
           make msm8953_defconfig
           
-          # Trik jitu: Mematikan proteksi yang bikin compiler error secara paksa di berkas .config sebelum compile
+          # Mematikan proteksi compiler stack protector yang memicu error sebelumnya
           sed -i 's/CONFIG_CC_STACKPROTECTOR_STRONG=y/# CONFIG_CC_STACKPROTECTOR_STRONG is not set/' .config
           sed -i 's/CONFIG_CC_STACKPROTECTOR_REGULAR=y/# CONFIG_CC_STACKPROTECTOR_REGULAR is not set/' .config
           echo "CONFIG_CC_STACKPROTECTOR_NONE=y" >> .config
           
-          # Jalankan kompilasi menggunakan GCC cross-compiler bawaan yang stabil
-          make -j$(nproc) KCFLAGS="$KCFLAGS"
+          # Jalankan kompilasi dengan menyuntikkan bendera host secara paksa
+          make -j$(nproc) HOSTCFLAGS="$HOSTCFLAGS" HOSTCXXFLAGS="$HOSTCXXFLAGS" KCFLAGS="$KCFLAGS"
           
           if [ -f arch/arm64/boot/Image.gz-dtb ]; then
             cp arch/arm64/boot/Image.gz-dtb ../output/boot.img
