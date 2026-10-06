@@ -16,30 +16,30 @@ jobs:
           A="raw.github"
           B="usercontent.com"
           
-          # Ambil alat tempur resmi
+          # Unduh alat resmi pembongkar boot
           curl -sLo unpackbootimg "${H}${A}${B}/osm0sis/mkbootimg/master/unpackbootimg" && chmod +x unpackbootimg
           curl -sLo mkbootimg "${H}${A}${B}/osm0sis/mkbootimg/master/mkbootimg" && chmod +x mkbootimg
           
           mkdir -p ori halium ramdisk_halium ramdisk_ori out_boot
           
-          # Eksekusi pembongkaran bahan yang sudah Anda upload
+          # Bongkar file boot.img dan halium-boot.img yang sudah Anda upload kemarin
           ./unpackbootimg -i boot.img -o ori/
           ./unpackbootimg -i halium-boot.img -o halium/
 
-          # Bongkar ramdisk halium dan ramdisk ori vince
+          # Ekstrak ramdisk halium dan ramdisk bawaan vince Anda
           cd ramdisk_halium && gzip -d -c ../halium/ramdisk | cpio -i 2>/dev/null
           cd ../ori/ramdisk_ori && gzip -d -c ../ramdisk | cpio -i 2>/dev/null
 
-          # Suntikkan komponen halium
+          # Suntikkan komponen init dan sistem utama Halium ke ramdisk vince
           cp -rf ../../ramdisk_halium/init* ./
           cp -rf ../../ramdisk_halium/sbin* ./ 2>/dev/null || true
           cp -rf ../../ramdisk_halium/lib* ./ 2>/dev/null || true
 
-          # Bungkus ulang ramdisk porting
+          # Bungkus kembali ramdisk hasil porting
           find . | cpio -o -H newc 2>/dev/null | gzip > ../ramdisk_new
           cd ..
 
-          # Rakit final menjadi file tunggal halium-boot-vince.img
+          # Rakit ulang menjadi berkas tunggal menggunakan semua parameter mesin asli Vince Anda
           ./mkbootimg --kernel kernel --ramdisk ramdisk_new --dtb dtb --cmdline "$(cat cmdline)" --base $(cat base) --pagesize $(cat pagesize) --kernel_offset $(cat kernel_offset) --ramdisk_offset $(cat ramdisk_offset) --tags_offset $(cat tags_offset) -o ../out_boot/halium-boot-vince.img
 
       - name: Unggah Hasil Boot .img Ukuran Kecil
