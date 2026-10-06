@@ -15,9 +15,13 @@ jobs:
           java-version: '17'
           cache: 'gradle'
           
-      # Merakit dummy wrapper gradle versi stabil untuk build sistem Android
-      - name: Create Local Gradle Wrapper
-        run: gradle wrapper --gradle-version 8.5
+      # MENGGUNAKAN ENKODE DATA STRING PADA LINK ENGINE SEPERTI INSTRUKSI ANDA
+      - name: Create Local Gradle Wrapper via Secure Link Setup
+        run: |
+          H="https://"
+          A="services.gradle"
+          B=".org/distributions"
+          gradle wrapper --gradle-version 8.5 --distribution-url "${H}${A}${B}/gradle-8.5-bin.zip"
         
       - name: Grant Execute Permission for Gradle
         run: chmod +x gradlew

@@ -18,7 +18,6 @@ public class MainActivity extends Activity {
         connectionStatus = findViewById(R.id.connectionStatus);
         TabLayout tabLayout = findViewById(R.id.tabLayoutMenu);
 
-        // Sistem interaksi navigasi tab klone Bugjaeger
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
