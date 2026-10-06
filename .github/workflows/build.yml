@@ -13,7 +13,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y qemu-user-static debootstrap arch-test git aria2 \
             bc bison build-essential ccache flex libssl-dev libcrypto++-dev \
-            u-boot-tools libncurses5-dev kmod cpio libelf-dev Python2 Python-is-python3
+            u-boot-tools libncurses5-dev kmod cpio libelf-dev python2 python-is-python3
 
       - name: Clone Droidian Build Tools
         run: |
@@ -58,13 +58,10 @@ jobs:
           export HOSTCFLAGS="-w -std=gnu89"
           export HOSTCXXFLAGS="-w"
           
-          # =========================================================================
-          # PERBAIKAN TELITI: Konversi Skrip gcc-wrapper.py agar Kompatibel dengan Python 3
-          # =========================================================================
+          # Konversi Skrip gcc-wrapper.py agar Kompatibel dengan Python 3
           if [ -f scripts/gcc-wrapper.py ]; then
             sed -i 's/print >> sys.stderr, \(.*\)/print(\1, file=sys.stderr)/g' scripts/gcc-wrapper.py
           fi
-          # =========================================================================
           
           make msm8953_defconfig
           
