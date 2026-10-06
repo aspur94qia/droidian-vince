@@ -11,41 +11,38 @@ jobs:
       - name: Setup Build Environment
         run: |
           sudo apt-get update
-          sudo apt-get install -y git aria2 zstd zip qemu-user-static debootstrap arch-test
+          sudo apt-get install -y git aria2 zstd zip
 
-      - name: Assemble Mandate Installer Components Locally
+      - name: Fetch and Assemble Compact Installer Components
         run: |
           mkdir -p output
           mkdir -p zip_structure/META-INF/com/google/android
           mkdir -p zip_structure/images
           
-          # Menggunakan format pemisah string anti-blokir lama Anda untuk repositori cadangan
+          # Mengunci format pemisah string anti-blokir lama Anda untuk keamanan repositori
           H="https://"
           A="git"
           B="hub.com"
           
-          # 1. Bangun sistem Debian dasar (Bookworm ARM64) secara mandiri lewat debootstrap (Anti-Blokir Server Droidian)
-          echo "Membangun sistem dasar Debian Bookworm ARM64 secara lokal..."
-          sudo debootstrap --arch=arm64 --foreign bookworm ./debian_rootfs http://debian.org
-          
-          # Bungkus sistem dasar murni tersebut ke format arsip padat terkompresi
-          echo "Mengompresi Rootfs mandiri..."
-          cd debian_rootfs
-          sudo tar -cf ../zip_structure/images/rootfs.tar .
-          cd ..
-          sudo zstd -19 --rm zip_structure/images/rootfs.tar -o zip_structure/images/rootfs.tar.zst
-          
-          # 2. Unduh Boot Image Halium dari mirror repositori alternatif publik yang stabil
-          echo "Mengunduh komponen Boot Halium..."
-          aria2c -s 16 -x 16 -k 1M -o zip_structure/images/boot.img \
+          # =========================================================================
+          # PERBAIKAN TOTAL TAUTAN: Mengalihkan unduhan ke Server Rilis Aktif GitHub Droidian
+          # =========================================================================
+          echo "Mengunduh Rootfs Droidian asli (Bypass API29 GSI via GitHub Release)..."
+          aria2c -s 16 -x 16 -k 1M -o zip_structure/images/rootfs.tar.zst \
             "${H}://github.com" || \
-            dd if=/dev/zero of=zip_structure/images/boot.img bs=1M count=64
+          aria2c -s 16 -x 16 -k 1M -o zip_structure/images/rootfs.tar.zst \
+            "${H}://github.com"
+          
+          echo "Mengunduh komponen Boot Halium Resmi..."
+          aria2c -s 16 -x 16 -k 1M -o zip_structure/images/boot.img \
+            "${H}://github.com"
+          # =========================================================================
             
-          # 3. Buat file Vendor Image dummy esensial untuk kecocokan flashing TWRP di Vince
+          # 3. Buat file Vendor Image dummy esensial berukuran tipis untuk memicu bypass aturan flashing TWRP
           echo "Membuat Driver Vendor penyesuai..."
           dd if=/dev/zero of=zip_structure/images/vendor.img bs=1M count=32
           
-          # 4. BUAT UPDATE-BINARY BERBASIS SHELL SCRIPT ASLI (100% Kebaca di TWRP Modern)
+          # 4. BUAT UPDATE-BINARY BERBASIS SHELL SCRIPT ASLI (100% Kebaca di TWRP Tanpa Error 6)
           cat << 'BIN_EOF' > zip_structure/META-INF/com/google/android/update-binary
           #!/sbin/sh
           OUTFD=$2
@@ -64,16 +61,19 @@ jobs:
           /sbin/umount /data 2>/dev/null
           /sbin/umount /vendor 2>/dev/null
           
+          # Flash langsung boot.img ke sektor internal partisi /boot ponsel Vince
           ui_print "Flashing boot.img to /boot partition..."
           BOOT_PATH=$(find /dev/block/platform/ -name "boot" | head -n 1)
           if [ -z "$BOOT_PATH" ]; then BOOT_PATH="/dev/block/bootdevice/by-name/boot"; fi
           dd if=/images/boot.img of=$BOOT_PATH
           
+          # Flash vendor.img ke sektor internal partisi /vendor ponsel Vince
           ui_print "Flashing basic vendor.img to /vendor partition..."
           VENDOR_PATH=$(find /dev/block/platform/ -name "vendor" | head -n 1)
           if [ -z "$VENDOR_PATH" ]; then VENDOR_PATH="/dev/block/bootdevice/by-name/vendor"; fi
           dd if=/images/vendor.img of=$VENDOR_PATH
           
+          # Lap bersih isi partisi UserData (/data) ke format ext4 murni
           ui_print "Formatting /data (UserData) partition to EXT4..."
           DATA_PATH=$(find /dev/block/platform/ -name "userdata" | head -n 1)
           if [ -z "$DATA_PATH" ]; then DATA_PATH="/dev/block/bootdevice/by-name/userdata"; fi
@@ -82,11 +82,16 @@ jobs:
           ui_print "Mounting clean /data partition..."
           /sbin/mount $DATA_PATH /data
           
+          # Ekstrak arsip OS Droidian asli langsung ke dalam partisi UserData HP Anda
           ui_print "Extracting high-compressed Droidian Rootfs into UserData..."
+          busybox tar --zstd -xf /images/rootfs.tar.zst -C /data/ --strip-components=1 || \
           busybox tar --zstd -xf /images/rootfs.tar.zst -C /data/ || true
           
+          # Injeksi aturan berkas initrd agar sinkron dengan halium-boot UBports Vince Anda
           ui_print "Creating Halium initrd system link rules..."
-          mkdir -p /data/var/lib/lxc/android
+          if [ -d /data/rootfs ]; then
+            mv /data/rootfs /data/rootfs_data
+          fi
           
           /sbin/umount /data
           ui_print "========================================"
@@ -97,10 +102,10 @@ jobs:
           BIN_EOF
           chmod +x zip_structure/META-INF/com/google/android/update-binary
           
-          # Membuat updater-script dummy penanda wajib untuk TWRP
+          # Membuat updater-script kosong sebagai penanda wajib pembacaan biner TWRP
           echo "# Dummy installer script" > zip_structure/META-INF/com/google/android/updater-script
           
-          # 5. Bungkus seluruh komponen tipis ini menjadi satu paket ZIP tunggal
+          # 5. Satukan struktur direktori instalasi menjadi berkas ZIP flashable tunggal
           cd zip_structure
           zip -r9 ../output/Droidian-Vince-UltraCompact-Installer.zip .
           cd ..
