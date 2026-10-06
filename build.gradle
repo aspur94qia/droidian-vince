@@ -3,4 +3,8 @@ buildscript {
     dependencies { classpath 'com.android.tools.build:gradle:8.2.2' }
 }
 allprojects { repositories { google(); mavenCentral() } }
-clean.doFirst { delete rootProject.buildDir }
+
+// Sintaks pembersihan modern yang cocok untuk Gradle 8.5+
+tasks.register('clean', Delete) {
+    delete rootProject.buildDir
+}

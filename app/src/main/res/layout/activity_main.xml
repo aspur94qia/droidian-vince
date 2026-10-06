@@ -6,7 +6,6 @@
     android:orientation="vertical"
     android:background="#121212">
 
-    <!-- Header Merek Kustom Anda -->
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -30,7 +29,6 @@
             android:textSize="12sp" />
     </RelativeLayout>
 
-    <!-- Struktur Tab Menu Atas Seperti Bugjaeger -->
     <com.google.android.material.tabs.TabLayout
         android:id="@+id/tabLayoutMenu"
         android:layout_width="match_parent"
@@ -44,7 +42,6 @@
         <com.google.android.material.tabs.TabItem android:text="Fastboot" />
     </com.google.android.material.tabs.TabLayout>
 
-    <!-- Konten Layar Utama -->
     <FrameLayout
         android:id="@+id/frameContainer"
         android:layout_width="match_parent"
