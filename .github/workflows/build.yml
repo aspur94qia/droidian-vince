@@ -60,15 +60,12 @@ jobs:
           export HOSTCXXFLAGS="-w"
           
           # =========================================================================
-          # SOLUSI PASTI BERHASIL: Trik Pembuatan File Header Palsu (Mocking Header)
+          # PERBAIKAN BERSIH: Buat file header dummy langsung di target folder audio & drivers
           # =========================================================================
-          # Kita buat file btfm_slim.h kosong di semua lokasi pencarian utama agar compiler tidak error
-          mkdir -p include/linux/
-          touch include/linux/btfm_slim.h
+          mkdir -p techpack/audio/asoc/
+          touch techpack/audio/asoc/btfm_slim.h
+          mkdir -p drivers/bluetooth/
           touch drivers/bluetooth/btfm_slim.h
-          
-          # Masukkan juga direktori lokal bluetooth ke dalam jalur kompilasi global
-          export KCFLAGS="$KCFLAGS -I\$(srctree)/drivers/bluetooth -I\$(srctree)/include/linux"
           # =========================================================================
           
           make msm8953_defconfig
