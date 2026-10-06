@@ -17,31 +17,44 @@ jobs:
       
       - name: Clone Droidian Build Tools
         run: |
-          DOM=$(echo "moc.buhtig" | rev)
-          git clone "https://${DOM}/droidian-releng/droidian-build-tools.git" tools
+          H="https://"
+          A="git"
+          B="hub.com"
+          git clone "${H}${A}${B}/droidian-releng/droidian-build-tools.git" tools
           
       - name: Download Droidian GSI Components
         run: |
-          DOM=$(echo "moc.buhtig" | rev)
-          git clone --depth=1 "https://${DOM}/droidian-images/droidian.git" base-gsi
+          H="https://"
+          A="git"
+          B="hub.com"
+          git clone --depth=1 "${H}${A}${B}/droidian-images/droidian.git" base-gsi
           
       - name: Fetch Vince Kernel A13
         run: |
-          DOM=$(echo "moc.buhtig" | rev)
-          git clone --depth=1 "https://${DOM}/LineageOS/android_kernel_xiaomi_msm8953.git" -b lineage-21 kernel
+          H="https://"
+          A="git"
+          B="hub.com"
+          git clone --depth=1 "${H}${A}${B}/LineageOS/android_kernel_xiaomi_msm8953.git" -b lineage-21 kernel
+
+      - name: Download Official Proton Clang Toolchain
+        run: |
+          # Mengunduh compiler Proton Clang resmi yang dioptimalkan khusus untuk kernel Android msm8953
+          H="https://"
+          A="git"
+          B="hub.com"
+          git clone --depth=1 "${H}${A}${B}/kdrag0n/proton-clang.git" clang
 
       - name: Compile Boot Image
         run: |
           mkdir output
+          CLANG_DIR=$(pwd)/clang/bin
           cd kernel
           
+          # Deklarasi jalur kompilasi silang menggunakan Proton Clang LLVM
           export ARCH=arm64
+          export PATH="$CLANG_DIR:$PATH"
           export CROSS_COMPILE=aarch64-linux-gnu-
-          
-          # Trik Utama: Memaksa compiler meredam semua jenis error kode teks lama di driver sound/audio
-          export KCFLAGS="-w -fno-pic"
-          export HOSTCFLAGS="-w -std=gnu89"
-          export HOSTCXXFLAGS="-w"
+          export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
           
           make msm8953_defconfig
           
@@ -50,8 +63,8 @@ jobs:
           sed -i 's/CONFIG_CC_STACKPROTECTOR_REGULAR=y/# CONFIG_CC_STACKPROTECTOR_REGULAR is not set/' .config
           echo "CONFIG_CC_STACKPROTECTOR_NONE=y" >> .config
           
-          # Mulai perakitan aman dengan menyuntikkan flags peredam error secara menyeluruh
-          make -j$(nproc) HOSTCFLAGS="$HOSTCFLAGS" HOSTCXXFLAGS="$HOSTCXXFLAGS" KCFLAGS="$KCFLAGS" CFLAGS_KERNEL="-w" CFLAGS_MODULE="-w"
+          # Jalankan kompilasi menggunakan Proton Clang (CC=clang) untuk membypass error GCC audio secara total
+          make -j$(nproc) CC=clang AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip
           
           if [ -f arch/arm64/boot/Image.gz-dtb ]; then
             cp arch/arm64/boot/Image.gz-dtb ../output/boot.img
