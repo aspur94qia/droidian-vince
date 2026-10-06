@@ -31,27 +31,18 @@ jobs:
             "${H}${A}${B}/ubports-on-vince/ubports-ci/releases/download/refs%2Fheads%2Fmaster/ubports-20220121-015528-devel-vince.zip"
           
           # =========================================================================
-          # LANGKAH 2: UNDUH OS DROIDIAN RESMI DAN KOMPRES KE FORMAT .IMG.GZ
+          # LANGKAH 2: UNDUH OS DROIDIAN RESMI DAN KOMPRES KE FORMAT .IMG.GZ (FIXED)
           # =========================================================================
           echo "Mengunduh Berkas Sistem Droidian Resmi API29 Pilihan Anda..."
           aria2c -s 16 -x 16 -k 1M -o droidian_source.zip \
             "${H}${A}${B}/droidian-images/droidian/releases/download/droidian%2F101.20251130/droidian-OFFICIAL-phosh-phone-rootfs-api29-arm64-101.20251130_20251207.zip"
           
-          # Ekstrak file citra .img utama dari dalam ZIP Droidian
+          # Ekstrak file citra .img utama dari dalam ZIP Droidian langsung ke tmp_workspace
           unzip -j droidian_source.zip "*.img" -d tmp_workspace/
           rm -f droidian_source.zip
           
-          # Cari berkas citra Droidian hasil ekstraksi
-          DROIDIAN_IMG=$(find tmp_workspace/ -name "*.img" -type f | head -n 1)
-          
-          if [ -z "$DROIDIAN_IMG" ]; then
-            echo "Gagal menemukan berkas citra sistem di dalam ZIP Droidian!" && exit 1
-          fi
-          
-          # Ubah nama berkas Droidian menjadi rootfs.img terlebih dahulu
-          mv "$DROIDIAN_IMG" tmp_workspace/rootfs.img
-          
-          # Lakukan kompresi maksimal dengan Gzip menjadi format rootfs.img.gz (Sesuai Gambar Anda)
+          # PERBAIKAN: Menghapus perintah mv duplikat karena berkas hasil unzip sudah otomatis bernama rootfs.img
+          # Lakukan kompresi maksimal dengan Gzip menjadi format rootfs.img.gz (Sesuai Struktur UBports)
           echo "Mengompresi sistem Droidian menjadi format Gzip (.img.gz)..."
           gzip -9 tmp_workspace/rootfs.img
           
@@ -114,7 +105,7 @@ jobs:
           
           # Bersihkan ruang sisa temporary
           rm -rf tmp_workspace tmp_meta
-          echo "Proses perakitan hibrida selesai sempurna!"
+          echo "Proses penggabungan hibrida selesai sempurna!"
       
       - name: Upload Finished Installer ZIP
         uses: actions/upload-artifact@v4
