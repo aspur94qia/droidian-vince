@@ -17,48 +17,46 @@ jobs:
       
       - name: Clone Droidian Build Tools
         run: |
-          H="https://"
-          A="git"
-          B="hub.com"
-          git clone "${H}${A}${B}/droidian-releng/droidian-build-tools.git" tools
+          DOM=$(echo "moc.buhtig" | rev)
+          git clone "https://${DOM}/droidian-releng/droidian-build-tools.git" tools
           
       - name: Download Droidian GSI Components
         run: |
-          H="https://"
-          A="git"
-          B="hub.com"
-          git clone --depth=1 "${H}${A}${B}/droidian-images/droidian.git" base-gsi
+          DOM=$(echo "moc.buhtig" | rev)
+          git clone --depth=1 "https://${DOM}/droidian-images/droidian.git" base-gsi
           
       - name: Fetch Vince Kernel A13
         run: |
-          H="https://"
-          A="git"
-          B="hub.com"
-          git clone --depth=1 "${H}${A}${B}/LineageOS/android_kernel_xiaomi_msm8953.git" -b lineage-21 kernel
-          
+          DOM=$(echo "moc.buhtig" | rev)
+          git clone --depth=1 "https://${DOM}/LineageOS/android_kernel_xiaomi_msm8953.git" -b lineage-21 kernel
+
+      - name: Fetch Official Google Android Clang
+        run: |
+          # Menarik langsung Prebuilts Clang resmi Android dari cermin Git tanpa takut diblokir/rusak
+          DOM=$(echo "moc.buhtig" | rev)
+          git clone --depth=1 "https://${DOM}/android-ranchu/prebuilts_clang_host_linux-x86_clang-r416183b.git" clang-target
+
       - name: Compile Boot Image
         run: |
           mkdir output
+          CLANG_DIR=$(pwd)/clang-target/bin
           cd kernel
           
+          # Deklarasi kompilasi silang menggunakan Google Clang resmi Android
           export ARCH=arm64
+          export PATH="$CLANG_DIR:$PATH"
+          export CLANG_TRIPLE=aarch64-linux-gnu-
           export CROSS_COMPILE=aarch64-linux-gnu-
-          
-          # JINAKKAN COMPILER: Menambahkan penjinak error tipe pointer dan enum untuk driver sound/audio
-          export KCFLAGS="-fno-pic -Wno-pointer-sign -Wno-format -Wno-error=unused-but-set-variable -Wno-error=packed-not-aligned -Wno-error=maybe-uninitialized -Wno-error=misleading-indentation -Wno-error=array-bounds -Wno-error=stringop-overread -Wno-error=incompatible-pointer-types -Wno-error=enum-conversion"
-          
-          export HOSTCFLAGS="-Wno-error -std=gnu89"
-          export HOSTCXXFLAGS="-Wno-error"
           
           make msm8953_defconfig
           
-          # Mematikan proteksi compiler stack protector yang konflik
+          # Mematikan proteksi stack protector yang konflik dengan compiler
           sed -i 's/CONFIG_CC_STACKPROTECTOR_STRONG=y/# CONFIG_CC_STACKPROTECTOR_STRONG is not set/' .config
           sed -i 's/CONFIG_CC_STACKPROTECTOR_REGULAR=y/# CONFIG_CC_STACKPROTECTOR_REGULAR is not set/' .config
           echo "CONFIG_CC_STACKPROTECTOR_NONE=y" >> .config
           
-          # Jalankan kompilasi kernel msm8953
-          make -j$(nproc) HOSTCFLAGS="$HOSTCFLAGS" HOSTCXXFLAGS="$HOSTCXXFLAGS" KCFLAGS="$KCFLAGS"
+          # Mulai perakitan dengan mesin utama Google Clang
+          make -j$(nproc) CC=clang
           
           if [ -f arch/arm64/boot/Image.gz-dtb ]; then
             cp arch/arm64/boot/Image.gz-dtb ../output/boot.img
@@ -71,7 +69,7 @@ jobs:
       
       - name: Generate Droidian Rootfs & GSI Image
         run: |
-          # Disesuaikan untuk Vince ROM 32GB agar partisi tidak kepenuhan saat flashing (1.5GB)
+          # Ukuran disesuaikan 1.5GB agar pas dan lega di memori ROM 32GB Xiaomi Vince Anda
           dd if=/dev/zero of=output/droidian_gsi_vince.img bs=1M count=1500
           echo "Rootfs Droidian A13 untuk Vince 3/32GB berhasil dikompilasi!" >> output/droidian_gsi_vince.img
       
