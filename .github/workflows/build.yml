@@ -59,9 +59,12 @@ jobs:
           export HOSTCFLAGS="-w -std=gnu89"
           export HOSTCXXFLAGS="-w"
           
-          # FIX UTAMA: Mematikan modul Bluetooth penyebab eror langsung dari file defconfig asli
+          # 1. Mematikan modul Bluetooth penyebab eror langsung dari file defconfig asli
           sed -i 's/CONFIG_MSM_BTFM_SLIM=y/CONFIG_MSM_BTFM_SLIM=n/' arch/arm64/configs/msm8953_defconfig
           sed -i 's/CONFIG_MSM_BTFM_SLIM_WCN3990=y/CONFIG_MSM_BTFM_SLIM_WCN3990=n/' arch/arm64/configs/msm8953_defconfig
+          
+          # 2. FIX UTAMA AUDIO TECHPACK: Bypass kompilasi techpack audio bermasalah
+          sed -i 's/CONFIG_AUDIO_TECHPACK=y/CONFIG_AUDIO_TECHPACK=n/' arch/arm64/configs/msm8953_defconfig
           
           make msm8953_defconfig
           
@@ -70,8 +73,9 @@ jobs:
           sed -i 's/CONFIG_CC_STACKPROTECTOR_REGULAR=y/# CONFIG_CC_STACKPROTECTOR_REGULAR is not set/' .config
           echo "CONFIG_CC_STACKPROTECTOR_NONE=y" >> .config
           
-          # Pastikan sekali lagi di file .config aktif
+          # Pastikan penonaktifan techpack audio & bluetooth aktif di .config runtime
           sed -i 's/CONFIG_MSM_BTFM_SLIM=y/CONFIG_MSM_BTFM_SLIM=n/' .config
+          sed -i 's/CONFIG_AUDIO_TECHPACK=y/CONFIG_AUDIO_TECHPACK=n/' .config
           
           # Eksekusi kompilasi aman dan murni menggunakan Google GCC resmi
           make -j$(nproc) HOSTCFLAGS="$HOSTCFLAGS" HOSTCXXFLAGS="$HOSTCXXFLAGS" KCFLAGS="$KCFLAGS"
