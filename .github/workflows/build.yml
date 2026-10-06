@@ -25,15 +25,15 @@ jobs:
           B="hub.com"
           
           # =========================================================================
-          # PERBAIKAN STRUKTUR LINK: Menggabungkan variabel H, A, dan B dengan benar
+          # PERBAIKAN TOTAL: Menghapus huruf 'v' palsu agar tautan akurat sesuai gambar
           # =========================================================================
           echo "Mengunduh Berkas Sistem Droidian Resmi API29 Temuan Anda..."
           aria2c -s 16 -x 16 -k 1M -o zip_structure/images/droidian_system.zip \
-            "${H}${A}${B}/droidian-images/droidian/releases/download/v101.20251130_20251207/droidian-OFFICIAL-phosh-phone-rootfs-api29-arm64-101.20251130_20251207.zip"
+            "${H}${A}${B}/droidian-images/droidian/releases/download/101.20251130_20251207/droidian-OFFICIAL-phosh-phone-rootfs-api29-arm64-101.20251130_20251207.zip"
           
           echo "Mengunduh komponen Boot Halium Resmi..."
           aria2c -s 16 -x 16 -k 1M -o zip_structure/images/boot.img \
-            "${H}${A}${B}/droidian-images/droidian/releases/download/v101.20251130_20251207/boot-halium-generic-arm64.img"
+            "${H}${A}${B}/droidian-images/droidian/releases/download/101.20251130_20251207/boot-halium-generic-arm64.img"
           # =========================================================================
             
           # Buat file Vendor Image dummy esensial untuk memicu bypass aturan flashing TWRP
