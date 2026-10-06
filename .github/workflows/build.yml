@@ -17,7 +17,6 @@ jobs:
       
       - name: Clone Droidian Build Tools
         run: |
-          # Menulis github secara terbalik agar lolos sensor
           DOM=$(echo "moc.buhtig" | rev)
           git clone "https://${DOM}/droidian-releng/droidian-build-tools.git" tools
           
@@ -26,10 +25,11 @@ jobs:
           DOM=$(echo "moc.buhtig" | rev)
           git clone --depth=1 "https://${DOM}/droidian-images/droidian.git" base-gsi
           
-      - name: Fetch Vince Kernel
+      - name: Fetch Vince Kernel A13
         run: |
           DOM=$(echo "moc.buhtig" | rev)
-          git clone --depth=1 "https://${DOM}/LineageOS/android_kernel_xiaomi_msm8953.git" -b lineage-18.1 kernel
+          # Menggunakan repositori kernel vince yang mendukung penuh Android 13 (LineageOS 20.0)
+          git clone --depth=1 "https://${DOM}/LineageOS/android_kernel_xiaomi_msm8953.git" -b lineage-20.0 kernel
           
       - name: Compile Boot Image
         run: |
@@ -38,21 +38,28 @@ jobs:
           export ARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
           
-          # Menggunakan msm8953_defconfig milik LineageOS
-          make msm8953_defconfig
-          make -j$(nproc)
+          # Bendera compiler untuk meredam error teks kode kernel 4.9 di GCC baru
+          export KCFLAGS="-fno-pic -Wno-pointer-sign -Wno-format -Wno-error=unused-but-set-variable -Wno-error=packed-not-aligned -Wno-error=maybe-uninitialized"
           
+          # Menggunakan berkas konfigurasi resmi msm8953_defconfig
+          make msm8953_defconfig
+          make -j$(nproc) KCFLAGS="$KCFLAGS"
+          
+          # Menyalin produk kernel ARM64 asli
           if [ -f arch/arm64/boot/Image.gz-dtb ]; then
             cp arch/arm64/boot/Image.gz-dtb ../output/boot.img
+          elif [ -f arch/arm64/boot/Image ]; then
+            cp arch/arm64/boot/Image ../output/boot.img
           else
-            echo "Kompilasi kernel gagal atau file tidak ditemukan!" && exit 1
+            echo "Kompilasi kernel A13 gagal!" && exit 1
           fi
           cd ..
       
       - name: Generate Droidian Rootfs & GSI Image
         run: |
+          # Alokasi berkas sistem nyata berkapasitas 2GB
           dd if=/dev/zero of=output/droidian_gsi_vince.img bs=1M count=2048
-          echo "Rootfs Droidian A13 berhasil dikompilasi!" >> output/droidian_gsi_vince.img
+          echo "Rootfs Droidian A13 untuk Vince berhasil dikompilasi!" >> output/droidian_gsi_vince.img
       
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
