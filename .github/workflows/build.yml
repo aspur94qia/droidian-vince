@@ -30,32 +30,23 @@ jobs:
             "${H}${A}${B}/ubports-on-vince/ubports-ci/releases/download/refs%2Fheads%2Fmaster/ubports-20220121-015528-devel-vince.zip"
           
           # =========================================================================
-          # LANGKAH 2: UNDUH OS DROIDIAN RESMI DAN EKSTRAK FILE CITRA SISTEMNYA
+          # LANGKAH 2: UNDUH OS DROIDIAN RESMI DAN EKSTRAK BERKAS ROOTFS ASLINYA
           # =========================================================================
           echo "Mengunduh Berkas Sistem Droidian Resmi API29 Pilihan Anda..."
           aria2c -s 16 -x 16 -k 1M -o droidian_source.zip \
             "${H}${A}${B}/droidian-images/droidian/releases/download/droidian%2F101.20251130/droidian-OFFICIAL-phosh-phone-rootfs-api29-arm64-101.20251130_20251207.zip"
           
-          # Ekstrak file .img apa saja yang ada di dalam ZIP Droidian tanpa tebak nama
+          # Ekstrak file .img sistem dari ZIP Droidian langsung ke folder kerja sementara
           mkdir -p tmp_droidian
           unzip -j droidian_source.zip "*.img" -d tmp_droidian/
           
-          # Cari berkas .img berukuran besar (pasti file rootfs sistem Droidian)
-          DROIDIAN_IMG=$(find tmp_droidian/ -name "*.img" -type f | head -n 1)
-          
-          if [ -z "$DROIDIAN_IMG" ]; then
-            echo "Gagal menemukan berkas citra sistem di dalam ZIP Droidian!" && exit 1
-          fi
-          
           # =========================================================================
-          # LANGKAH 3: SUNTIKKAN SISTEM DROIDIAN KE DALAM ZIP ASLI UBPORTS
+          # LANGKAH 3: SUNTIKKAN BERKAS DROIDIAN KE DALAM ZIP ASLI UBPORTS (FIXED)
           # =========================================================================
           echo "Menyuntikkan sistem Droidian ke dalam ZIP asli UBports..."
           
-          # Ubah nama berkas Droidian menjadi rootfs.img agar dibaca oleh updater-script asli UBports
-          mv "$DROIDIAN_IMG" tmp_droidian/rootfs.img
-          
           # Masuk ke folder sementara dan perbarui berkas rootfs.img di dalam ZIP utama
+          # Menghapus perintah mv duplikat karena file sudah otomatis bernama rootfs.img
           cd tmp_droidian
           zip -u ../output/Droidian-Vince-Hybrid-Installer.zip rootfs.img
           cd ..
