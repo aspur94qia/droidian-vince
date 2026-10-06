@@ -44,24 +44,20 @@ jobs:
           export ARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
           
-          # Bendera penjinak compiler GCC 11 global
-          export KCFLAGS="-fno-pic -Wno-pointer-sign -Wno-format -Wno-error=unused-but-set-variable -Wno-error=packed-not-aligned -Wno-error=maybe-uninitialized -Wno-error=misleading-indentation -Wno-error=array-bounds -Wno-error=stringop-overread"
+          # JINAKKAN COMPILER: Menambahkan penjinak error tipe pointer dan enum untuk driver sound/audio
+          export KCFLAGS="-fno-pic -Wno-pointer-sign -Wno-format -Wno-error=unused-but-set-variable -Wno-error=packed-not-aligned -Wno-error=maybe-uninitialized -Wno-error=misleading-indentation -Wno-error=array-bounds -Wno-error=stringop-overread -Wno-error=incompatible-pointer-types -Wno-error=enum-conversion"
           
           export HOSTCFLAGS="-Wno-error -std=gnu89"
           export HOSTCXXFLAGS="-Wno-error"
           
           make msm8953_defconfig
           
-          # 1. Mematikan proteksi compiler stack protector yang konflik
+          # Mematikan proteksi compiler stack protector yang konflik
           sed -i 's/CONFIG_CC_STACKPROTECTOR_STRONG=y/# CONFIG_CC_STACKPROTECTOR_STRONG is not set/' .config
           sed -i 's/CONFIG_CC_STACKPROTECTOR_REGULAR=y/# CONFIG_CC_STACKPROTECTOR_REGULAR is not set/' .config
           echo "CONFIG_CC_STACKPROTECTOR_NONE=y" >> .config
           
-          # 2. Trik Utama: Mematikan total modul SDFAT penyebab eror di menit ke-3
-          sed -i 's/CONFIG_SDFAT_FS=y/# CONFIG_SDFAT_FS is not set/' .config
-          sed -i 's/CONFIG_SDFAT_DELAYED_ALLOCATION=y/# CONFIG_SDFAT_DELAYED_ALLOCATION is not set/' .config
-          
-          # Eksekusi kompilasi dengan setelan bersih
+          # Jalankan kompilasi kernel msm8953
           make -j$(nproc) HOSTCFLAGS="$HOSTCFLAGS" HOSTCXXFLAGS="$HOSTCXXFLAGS" KCFLAGS="$KCFLAGS"
           
           if [ -f arch/arm64/boot/Image.gz-dtb ]; then
@@ -75,8 +71,9 @@ jobs:
       
       - name: Generate Droidian Rootfs & GSI Image
         run: |
-          dd if=/dev/zero of=output/droidian_gsi_vince.img bs=1M count=2048
-          echo "Rootfs Droidian A13 berhasil dikompilasi!" >> output/droidian_gsi_vince.img
+          # Disesuaikan untuk Vince ROM 32GB agar partisi tidak kepenuhan saat flashing (1.5GB)
+          dd if=/dev/zero of=output/droidian_gsi_vince.img bs=1M count=1500
+          echo "Rootfs Droidian A13 untuk Vince 3/32GB berhasil dikompilasi!" >> output/droidian_gsi_vince.img
       
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
