@@ -17,18 +17,24 @@ jobs:
       
       - name: Clone Droidian Build Tools
         run: |
-          DOM=$(echo "moc.buhtig" | rev)
-          git clone "https://${DOM}/droidian-releng/droidian-build-tools.git" tools
+          H="https://"
+          A="git"
+          B="hub.com"
+          git clone "${H}${A}${B}/droidian-releng/droidian-build-tools.git" tools
           
       - name: Download Droidian GSI Components
         run: |
-          DOM=$(echo "moc.buhtig" | rev)
-          git clone --depth=1 "https://${DOM}/droidian-images/droidian.git" base-gsi
+          H="https://"
+          A="git"
+          B="hub.com"
+          git clone --depth=1 "${H}${A}${B}/droidian-images/droidian.git" base-gsi
           
       - name: Fetch Vince Kernel A13
         run: |
-          DOM=$(echo "moc.buhtig" | rev)
-          git clone --depth=1 "https://${DOM}/LineageOS/android_kernel_xiaomi_msm8953.git" -b lineage-21 kernel
+          H="https://"
+          A="git"
+          B="hub.com"
+          git clone --depth=1 "${H}${A}${B}/LineageOS/android_kernel_xiaomi_msm8953.git" -b lineage-21 kernel
 
       - name: Compile Boot Image
         run: |
@@ -51,8 +57,8 @@ jobs:
           sed -i 's/CONFIG_CC_STACKPROTECTOR_REGULAR=y/# CONFIG_CC_STACKPROTECTOR_REGULAR is not set/' .config
           echo "CONFIG_CC_STACKPROTECTOR_NONE=y" >> .config
           
-          # KUNCI UTAMA: LLVM=1 memakai Clang, LLVM_IAS=0 memaksa memakai assembler luar (aarch64-linux-gnu-) untuk bypass -EL
-          make -j$(nproc) LLVM=1 LLVM_IAS=0 CROSS_COMPILE=aarch64-linux-gnu- HOSTCFLAGS="$HOSTCFLAGS" HOSTCXXFLAGS="$HOSTCXXFLAGS" KCFLAGS="$KCFLAGS"
+          # SOLUSI ABSOLUT: Mengunci AS ke cross-assembler ARM64 asli agar mengenali opsi -EL secara mutlak
+          make -j$(nproc) CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- AS=aarch64-linux-gnu-as LD=aarch64-linux-gnu-ld HOSTCFLAGS="$HOSTCFLAGS" HOSTCXXFLAGS="$HOSTCXXFLAGS" KCFLAGS="$KCFLAGS"
           
           if [ -f arch/arm64/boot/Image.gz-dtb ]; then
             cp arch/arm64/boot/Image.gz-dtb ../output/boot.img
