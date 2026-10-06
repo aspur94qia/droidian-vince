@@ -1,0 +1,16 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'com.aspflash.tools'
+    compileSdk 34
+    defaultConfig {
+        applicationId "com.aspflash.tools"
+        minSdk 24  // Mengunci kompatibilitas minimum Android 7.0 Nougat
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0-aspflash"
+    }
+}
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.11.0'
+}
