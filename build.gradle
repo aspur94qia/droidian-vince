@@ -4,7 +4,6 @@ buildscript {
 }
 allprojects { repositories { google(); mavenCentral() } }
 
-// Sintaks pembersihan modern yang cocok untuk Gradle 8.5+
 tasks.register('clean', Delete) {
     delete rootProject.buildDir
 }

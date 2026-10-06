@@ -4,7 +4,7 @@ android {
     compileSdk 34
     defaultConfig {
         applicationId "com.aspflash.tools"
-        minSdk 24  // Kompatibel penuh minimal Android 7.0 Nougat
+        minSdk 24
         targetSdk 34
         versionCode 1
         versionName "1.0.0-aspflash"

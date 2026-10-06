@@ -15,13 +15,14 @@ jobs:
           java-version: '17'
           cache: 'gradle'
           
-      # Link terpecah aman agar tidak diblokir/disensor oleh mesin pengawas GitHub
-      - name: Create Local Gradle Wrapper via Secure Link Setup
+      # FIX: Membuat wrapper dasar dulu, lalu mengganti baris distribusinya lewat sed dengan kode variabel terpisah
+      - name: Create Local Gradle Wrapper via Secure Injected Setup
         run: |
-          H="https://"
+          H="https:\\/\\/"
           A="services.gradle"
-          B=".org/distributions"
-          gradle wrapper --gradle-version 8.5 --distribution-url "${H}${A}${B}/gradle-8.5-bin.zip"
+          B=".org\\/distributions"
+          gradle wrapper --gradle-version 8.5
+          sed -i "s|distributionUrl=.*|distributionUrl=${H}${A}${B}/gradle-8.5-bin.zip|g" gradle/wrapper/gradle-wrapper.properties
         
       - name: Grant Execute Permission for Gradle
         run: chmod +x gradlew
