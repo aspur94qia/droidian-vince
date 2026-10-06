@@ -12,7 +12,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y qemu-user-static debootstrap arch-test git aria2 \
-            zstd android-sdk-libsparse-utils ext4utils
+            zstd android-sdk-libsparse-utils e2fsprogs
       
       - name: Clone Droidian Developer Tools
         run: |
@@ -22,8 +22,7 @@ jobs:
         run: |
           mkdir -p output
           
-          # Membuat sistem operasi Droidian asli (Debian Bookworm) menggunakan arsitektur ARM64
-          # Skrip ini akan mengunduh paket Debian murni dan mengonfigurasinya untuk Halium
+          # Membuat rootfs Droidian (Debian Bookworm) murni untuk arsitektur ARM64
           sudo ./tools/developer/droidian-build-rootfs \
             --architecture arm64 \
             --distribution bookworm \
