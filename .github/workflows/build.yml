@@ -13,7 +13,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y qemu-user-static debootstrap arch-test git aria2 \
             bc bison build-essential ccache flex libssl-dev libcrypto++-dev \
-            u-boot-tools libncurses5-dev kmod cpio libelf-dev python2 python-is-python2
+            u-boot-tools libncurses5-dev kmod cpio libelf-dev python2
 
       - name: Clone Droidian Build Tools
         run: |
@@ -47,6 +47,15 @@ jobs:
         run: |
           mkdir -p output
           GCC_DIR=$(pwd)/toolchain-64/bin
+          
+          # =========================================================================
+          # SOLUSI PERMANEN PYTHON: Paksa sistem membaca Python 2 murni
+          # =========================================================================
+          mkdir -p bin_bin
+          ln -sf /usr/bin/python2 bin_bin/python
+          export PATH=$(pwd)/bin_bin:$PATH
+          # =========================================================================
+          
           cd kernel
           
           # Mengunci arsitektur target ke Google GCC resmi Android
