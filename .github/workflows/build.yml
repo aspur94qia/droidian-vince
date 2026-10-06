@@ -14,6 +14,10 @@ jobs:
           sudo apt-get install -y qemu-user-static debootstrap arch-test git aria2 \
             bc bison build-essential ccache flex libssl-dev libcrypto++-dev \
             u-boot-tools libncurses5-dev llvm lld clang crossbuild-essential-arm64
+          
+          # SOLUSI UTAMA: Paksa sistem Ubuntu menggunakan assembler ARM64 saat memanggil /usr/bin/as
+          sudo rm -f /usr/bin/as
+          sudo ln -s /usr/bin/aarch64-linux-gnu-as /usr/bin/as
       
       - name: Clone Droidian Build Tools
         run: |
@@ -41,7 +45,6 @@ jobs:
           mkdir output
           cd kernel
           
-          # Pengaturan Lingkungan Arsitektur ARM64
           export ARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
           
@@ -57,8 +60,8 @@ jobs:
           sed -i 's/CONFIG_CC_STACKPROTECTOR_REGULAR=y/# CONFIG_CC_STACKPROTECTOR_REGULAR is not set/' .config
           echo "CONFIG_CC_STACKPROTECTOR_NONE=y" >> .config
           
-          # SOLUSI ABSOLUT: Mengunci AS ke cross-assembler ARM64 asli agar mengenali opsi -EL secara mutlak
-          make -j$(nproc) CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- AS=aarch64-linux-gnu-as LD=aarch64-linux-gnu-ld HOSTCFLAGS="$HOSTCFLAGS" HOSTCXXFLAGS="$HOSTCXXFLAGS" KCFLAGS="$KCFLAGS"
+          # Jalankan kompilasi menggunakan Clang terpadu dengan assembler yang sudah di-symlink
+          make -j$(nproc) CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- HOSTCFLAGS="$HOSTCFLAGS" HOSTCXXFLAGS="$HOSTCXXFLAGS" KCFLAGS="$KCFLAGS"
           
           if [ -f arch/arm64/boot/Image.gz-dtb ]; then
             cp arch/arm64/boot/Image.gz-dtb ../output/boot.img
