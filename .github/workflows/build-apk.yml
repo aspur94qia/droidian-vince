@@ -15,14 +15,14 @@ jobs:
           java-version: '17'
           cache: 'gradle'
           
-      # Modifikasi isi file wrapper secara internal menggunakan kode terpisah bawaan Anda
+      # Menginjeksi Gradle 8.7 langsung ke file properties menggunakan variabel pemisah string
       - name: Create Local Gradle Wrapper via Secure Injected Setup
         run: |
           H="https:\\/\\/"
           A="services.gradle"
           B=".org\\/distributions"
-          gradle wrapper --gradle-version 8.5
-          sed -i "s|distributionUrl=.*|distributionUrl=${H}${A}${B}/gradle-8.5-bin.zip|g" gradle/wrapper/gradle-wrapper.properties
+          gradle wrapper --gradle-version 8.7
+          sed -i "s|distributionUrl=.*|distributionUrl=${H}${A}${B}/gradle-8.7-bin.zip|g" gradle/wrapper/gradle-wrapper.properties
         
       - name: Grant Execute Permission for Gradle
         run: chmod +x gradlew
