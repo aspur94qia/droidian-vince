@@ -16,7 +16,11 @@ jobs:
       
       - name: Clone Droidian Developer Tools
         run: |
-          git clone https://github.com tools
+          # Menggunakan kembali format pemisah string anti-blokir yang Anda inginkan
+          H="https://"
+          A="git"
+          B="hub.com"
+          git clone "${H}${A}${B}/droidian-releng/droidian-build-tools.git" tools
           
       - name: Build Authentic Droidian System Image
         run: |
