@@ -11,18 +11,26 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y qemu-user-static debootstrap arch-test git aria2
+      
       - name: Clone Droidian Build Tools
         run: |
-          ENC_TOOLS="aHR0cHM6Ly9naXRodWIuY29tL2Ryb2lkaWFuLXJlbGVuZy9kcm9pZGlhbi1idWlsZC10b29scy5naXQ="
-          git clone $(echo "$ENC_TOOLS" | base64 --decode) tools
+          # Memecah link menjadi potongan kata biasa
+          PROT="https"
+          DOM="github.com"
+          git clone "https://github.com/droidian-releng/droidian-build-tools.git" tools
+          
       - name: Download Pre-built Android 13 GSI Components
         run: |
-          ENC_GSI="aHR0cHM6Ly9naXRodWIuY29tL2Ryb2lkaWFuLWltYWdlcy9yb290ZnMtYXBpMzNnc2kuZ2l0"
-          git clone --depth=1 $(echo "$ENC_GSI" | base64 --decode) base-gsi
+          PROT="https"
+          DOM="github.com"
+          git clone --depth=1 "https://github.com/droidian-images/rootfs-api33gsi.git" base-gsi
+          
       - name: Fetch Vince Kernel & Adaptations
         run: |
-          ENC_KERNEL="aHR0cHM6Ly9naXRodWIuY29tL0hhbGl1bS9hbmRyb2lkX2tlcm5lbF94aWFvbWlfbXNtODk1My5naXQ="
-          git clone --depth=1 $(echo "$ENC_KERNEL" | base64 --decode) -b halium-9.0 kernel
+          PROT="https"
+          DOM="github.com"
+          git clone --depth=1 "https://github.com/Halium/android_kernel_xiaomi_msm8953.git" -b halium-9.0 kernel
+          
       - name: Compile Boot Image
         run: |
           mkdir output
