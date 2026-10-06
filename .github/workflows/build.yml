@@ -11,7 +11,7 @@ jobs:
       - name: Setup Build Environment
         run: |
           sudo apt-get update
-          sudo apt-get install -y git aria2 zip unzip gzip
+          sudo apt-get install -y git aria2 zip unzip gzip e2fsprogs
 
       - name: Fetch and Assemble Compact Installer Components
         run: |
@@ -29,37 +29,43 @@ jobs:
           aria2c -s 16 -x 16 -k 1M -o output/Droidian-Vince-Hybrid-Installer.zip \
             "${H}${A}${B}/ubports-on-vince/ubports-ci/releases/download/refs%2Fheads%2Fmaster/ubports-20220121-015528-devel-vince.zip"
           
-          # Hapus HANYA rootfs.img.gz bawaan asli dari dalam wadah ZIP
-          echo "Menghapus HANYA berkas rootfs.img.gz bawaan UBports lama..."
+          # Hapus berkas rootfs lama dari dalam wadah ZIP agar kosong total
+          echo "Menghapus berkas rootfs.img.gz bawaan UBports lama..."
           zip -d output/Droidian-Vince-Hybrid-Installer.zip rootfs.img.gz || true
 
           # =========================================================================
-          # LANGKAH 2: UNDUH FILE DROIDIAN, EKSTRAK ROOTFS.IMG, LALU UBAH JADI GZ
+          # LANGKAH 2: UNDUH FILE DROIDIAN DAN AMBIL ROOTFS.IMG
           # =========================================================================
-          echo "Mengunduh Berkas Sistem Droidian Pilihan Anda..."
+          echo "Mengunduh Berkas Sistem Droidian Menggunakan Link Asli Anda..."
           aria2c -s 16 -x 16 -k 1M -o droidian_source.zip \
             "${H}${A}${B}/droidian-images/droidian/releases/download/droidian%2F101.20251130/droidian-OFFICIAL-phosh-phone-rootfs-api29-arm64-101.20251130_20251207.zip"
           
-          # Ekstrak langsung file citra utama dari dalam ZIP Droidian ke tmp_workspace
           unzip -j droidian_source.zip "*.img" -d tmp_workspace/
           rm -f droidian_source.zip
           
-          # FIX: Perintah mv ganda yang bikin eror kemarin sudah dihapus total di sini!
-          # File hasil unzip sudah otomatis bernama rootfs.img, jadi langsung kita gzip
-          echo "Mengompresi rootfs.img milik Droidian menjadi format .gz..."
+          mv tmp_workspace/*.img tmp_workspace/rootfs.img
+          
+          # =========================================================================
+          # LANGKAH KUNCI: POTONG RUANG KOSONG DI DALAM ROOTFS JADI ULTRA RAMPING
+          # =========================================================================
+          echo "Menghapus ruang kosong tidak terpakai di dalam rootfs.img Droidian..."
+          e2fsck -f -y tmp_workspace/rootfs.img || true
+          resize2fs -M tmp_workspace/rootfs.img || true
+          
+          # Ubah menjadi format .gz menggunakan kompresi Gzip level 9 (Maksimal)
+          echo "Mengompresi rootfs.img hasil pemotongan menjadi format .gz..."
           gzip -9 tmp_workspace/rootfs.img
           
           # =========================================================================
-          # LANGKAH 3: MASUKKAN ROOTFS.IMG.GZ DROIDIAN BARU KE FILE UBPORTS.ZIP
+          # LANGKAH 3: MASUKKAN ROOTFS.IMG.GZ DROIDIAN ULTRA RAMPING KE ZIP
           # =========================================================================
-          echo "Menyuntikkan rootfs.img.gz baru ke dalam wadah ZIP asli..."
+          echo "Menyuntikkan rootfs.img.gz baru yang sudah dikecilkan ke dalam wadah ZIP..."
           cd tmp_workspace
           zip -9ur ../output/Droidian-Vince-Hybrid-Installer.zip rootfs.img.gz
           cd ..
           
-          # Bersihkan sisa ruang temporary
           rm -rf tmp_workspace
-          echo "Proses tukar guling rootfs sukses tanpa eror bos!"
+          echo "Proses pengecilan dan tukar guling rootfs selesai sempurna bos!"
       
       - name: Upload Finished Installer ZIP
         uses: actions/upload-artifact@v4
