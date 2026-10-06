@@ -44,21 +44,20 @@ jobs:
           export ARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
           
-          # Bendera penjinak compiler untuk mesin inti HP ARM64
-          export KCFLAGS="-fno-pic -Wno-pointer-sign -Wno-format -Wno-error=unused-but-set-variable -Wno-error=packed-not-aligned -Wno-error=maybe-uninitialized -Wno-error=visibility -Wno-error=misleading-indentation"
+          # Membersihkan bendera hantu dan hanya menyisakan peredam error resmi yang valid
+          export KCFLAGS="-fno-pic -Wno-pointer-sign -Wno-format -Wno-error=unused-but-set-variable -Wno-error=packed-not-aligned -Wno-error=maybe-uninitialized -Wno-error=misleading-indentation"
           
-          # Trik Utama: Menjinakkan HOST COMPILER (PC) agar mau merakit folder scripts lama
           export HOSTCFLAGS="-Wno-error -std=gnu89"
           export HOSTCXXFLAGS="-Wno-error"
           
           make msm8953_defconfig
           
-          # Mematikan proteksi compiler stack protector yang memicu error sebelumnya
+          # Mematikan proteksi compiler yang konflik
           sed -i 's/CONFIG_CC_STACKPROTECTOR_STRONG=y/# CONFIG_CC_STACKPROTECTOR_STRONG is not set/' .config
           sed -i 's/CONFIG_CC_STACKPROTECTOR_REGULAR=y/# CONFIG_CC_STACKPROTECTOR_REGULAR is not set/' .config
           echo "CONFIG_CC_STACKPROTECTOR_NONE=y" >> .config
           
-          # Jalankan kompilasi dengan menyuntikkan bendera host secara paksa
+          # Eksekusi kompilasi aman
           make -j$(nproc) HOSTCFLAGS="$HOSTCFLAGS" HOSTCXXFLAGS="$HOSTCXXFLAGS" KCFLAGS="$KCFLAGS"
           
           if [ -f arch/arm64/boot/Image.gz-dtb ]; then
