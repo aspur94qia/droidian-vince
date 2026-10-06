@@ -59,14 +59,16 @@ jobs:
           export HOSTCFLAGS="-w -std=gnu89"
           export HOSTCXXFLAGS="-w"
           
-          # =========================================================================
-          # PERBAIKAN BERSIH: Buat file header dummy langsung di target folder audio & drivers
-          # =========================================================================
+          # 1. Pastikan file header dummy bluetooth tetap dibuat agar aman
           mkdir -p techpack/audio/asoc/
           touch techpack/audio/asoc/btfm_slim.h
           mkdir -p drivers/bluetooth/
           touch drivers/bluetooth/btfm_slim.h
-          # =========================================================================
+          
+          # 2. SELESAIKAN MASALAH AUDIO: Hapus baris kompilasi sub-direktori techpack dari Kbuild utama kernel
+          if [ -f Kbuild ]; then
+            sed -i '/techpack/d' Kbuild
+          fi
           
           make msm8953_defconfig
           
