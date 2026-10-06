@@ -16,7 +16,6 @@ jobs:
       
       - name: Clone Droidian Developer Tools
         run: |
-          # Menggunakan kembali format pemisah string anti-blokir yang Anda inginkan
           H="https://"
           A="git"
           B="hub.com"
@@ -26,12 +25,25 @@ jobs:
         run: |
           mkdir -p output
           
-          # Membuat rootfs Droidian (Debian Bookworm) murni untuk arsitektur ARM64
-          sudo ./tools/developer/droidian-build-rootfs \
+          # =========================================================================
+          # PERBAIKAN JALUR DATA: Deteksi lokasi asli skrip pembangun rootfs Droidian
+          # =========================================================================
+          BUILD_SCRIPT=$(find tools/ -name "droidian-build-rootfs" | head -n 1)
+          
+          if [ -z "$BUILD_SCRIPT" ]; then
+            echo "Skrip droidian-build-rootfs tidak ditemukan di dalam folder tools!" && exit 1
+          fi
+          
+          echo "Skrip ditemukan di: $BUILD_SCRIPT"
+          chmod +x $BUILD_SCRIPT
+          
+          # Eksekusi pembuatan rootfs Droidian (Debian Bookworm) murni menggunakan jalur asli
+          sudo $BUILD_SCRIPT \
             --architecture arm64 \
             --distribution bookworm \
             --output output/droidian_gsi_vince.img \
             --size 2000M
+          # =========================================================================
             
           # Memastikan file sistem berhasil dibuat dan bukan berukuran 0 bytes
           if [ ! -s output/droidian_gsi_vince.img ]; then
