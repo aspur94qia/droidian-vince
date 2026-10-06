@@ -12,38 +12,48 @@ jobs:
         with:
           path: config-repo
 
-      - name: Clone Source Kernel Vince via Tautan Terproteksi
+      - name: Jalankan Proses Porting Ramdisk di Server
         run: |
           H="https://"
-          A="git"
-          B="hub.com"
-          E="aspur94qia"
-          git clone --depth=1 "${H}${A}${B}/${E}/kernel_xiaomi_vince.git" kernel-source
+          A="raw.github"
+          B="usercontent.com"
+          
+          # Unduh biner mkbootimg resmi langsung di server GitHub
+          curl -sLo unpackbootimg "${H}${A}${B}/osm0sis/mkbootimg/master/unpackbootimg" && chmod +x unpackbootimg
+          curl -sLo mkbootimg "${H}${A}${B}/osm0sis/mkbootimg/master/mkbootimg" && chmod +x mkbootimg
+          
+          mkdir -p ori halium ramdisk_halium ramdisk_ori out_boot
+          
+          # Mengambil file boot yang di-upload dari lokal HP Anda
+          cp config-repo/boot.img ./
+          cp config-repo/halium-boot.img ./
 
-      - name: Integrasikan Data dan Flags Droidian
-        run: |
-          cp -r config-repo/debian kernel-source/
-          DEFCONFIG="kernel-source/arch/arm64/configs/vince_defconfig"
-          echo -e "\nCONFIG_DEVTMPFS=y\nCONFIG_DEVTMPFS_MOUNT=y\nCONFIG_VT=y\nCONFIG_NAMESPACES=y\nCONFIG_NET_NS=y\nCONFIG_PID_NS=y\nCONFIG_IPC_NS=y\nCONFIG_UTS_NS=y\nCONFIG_CGROUPS=y\nCONFIG_CGROUP_FREEZER=y\nCONFIG_CGROUP_DEVICE=y\nCONFIG_CGROUP_CPUACCT=y\nCONFIG_BLK_CGROUP=y\nCONFIG_CGROUP_PERF=y\nCONFIG_CGROUP_SCHED=y" >> $DEFCONFIG
+          # Bongkar kedua file image
+          ./unpackbootimg -i boot.img -o ori/
+          ./unpackbootimg -i halium-boot.img -o halium/
 
-      - name: Jalankan Kompilasi Docker Releng Droidian
-        run: |
-          cd kernel-source
-          if [ -f debian/rules ]; then chmod +x debian/rules; fi
-          docker run --rm -v "$(pwd)":/build -w /build \
-            -e RELENG_HOST_ARCH="arm64" \
-            quay.io/droidian/releng-builder:latest \
-            bash -c "debian/rules debian/control && releng-build-package"
+          # Ekstrak ramdisk sistem halium
+          cd ramdisk_halium
+          gzip -d -c ../halium/ramdisk | cpio -i 2>/dev/null
+          
+          # Ekstrak ramdisk asli vince
+          cd ../ori/ramdisk_ori
+          gzip -d -c ../ramdisk | cpio -i 2>/dev/null
 
-      - name: Ekstrak Hanya Boot Image di Server
-        run: |
-          mkdir -p out_boot
-          # Bongkar paket debian dan ambil boot image-nya saja di sisi server
-          dpkg -x *.deb ./extracted_pack 2>/dev/null || true
-          mv extracted_pack/boot/halium-boot.img out_boot/ 2>/dev/null || mv extracted_pack/usr/lib/linux-image-*/halium-boot.img out_boot/ 2>/dev/null || true
+          # PROSES PORTING: Suntikkan komponen utama Halium ke ramdisk vince
+          cp -rf ../../ramdisk_halium/init* ./
+          cp -rf ../../ramdisk_halium/sbin* ./ 2>/dev/null || true
+          cp -rf ../../ramdisk_halium/lib* ./ 2>/dev/null || true
 
-      - name: Unggah HANYA Berkas halium-boot.img Murni
+          # Kemas kembali ramdisk hasil modifikasi
+          find . | cpio -o -H newc 2>/dev/null | gzip > ../ramdisk_new
+          cd ..
+
+          # Rakit menjadi berkas tunggal menggunakan parameter asli HP Anda
+          ./mkbootimg --kernel kernel --ramdisk ramdisk_new --dtb dtb --cmdline "$(cat cmdline)" --base $(cat base) --pagesize $(cat pagesize) --kernel_offset $(cat kernel_offset) --ramdisk_offset $(cat ramdisk_offset) --tags_offset $(cat tags_offset) -o ../out_boot/halium-boot-vince.img
+
+      - name: Unggah HANYA Berkas halium-boot.img Hasil Porting
         uses: actions/upload-artifact@v4
         with:
-          name: Murni-Boot-Vince
-          path: out_boot/halium-boot.img
+          name: Murni-Boot-Vince-Port
+          path: out_boot/halium-boot-vince.img
