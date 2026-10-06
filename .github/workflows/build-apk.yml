@@ -15,7 +15,7 @@ jobs:
           java-version: '17'
           cache: 'gradle'
           
-      # FIX: Membuat wrapper dasar dulu, lalu mengganti baris distribusinya lewat sed dengan kode variabel terpisah
+      # Modifikasi isi file wrapper secara internal menggunakan kode terpisah bawaan Anda
       - name: Create Local Gradle Wrapper via Secure Injected Setup
         run: |
           H="https:\\/\\/"
