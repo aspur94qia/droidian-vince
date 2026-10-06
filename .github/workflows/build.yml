@@ -11,7 +11,6 @@ jobs:
       - name: Setup Build Environment
         run: |
           sudo apt-get update
-          # Menginstal llvm, lld, dan clang bawaan Ubuntu resmi untuk cross-compile
           sudo apt-get install -y qemu-user-static debootstrap arch-test git aria2 \
             bc bison build-essential ccache flex libssl-dev libcrypto++-dev \
             u-boot-tools libncurses5-dev llvm lld clang crossbuild-essential-arm64
@@ -36,15 +35,12 @@ jobs:
           mkdir output
           cd kernel
           
-          # Setup arsitektur dan gunakan Clang bawaan Ubuntu
           export ARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
           
-          # Bendera compiler untuk meredam peringatan teks kode kernel msm8953
           export KCFLAGS="-fno-pic -Wno-pointer-sign -Wno-format -Wno-error=unused-but-set-variable -Wno-error=packed-not-aligned -Wno-error=maybe-uninitialized -Wno-error=visibility"
           
           make msm8953_defconfig
-          # Melakukan kompilasi menggunakan Clang & LLD internal Ubuntu
           make -j$(nproc) CC=clang LD=ld.lld CROSS_COMPILE=aarch64-linux-gnu- KCFLAGS="$KCFLAGS"
           
           if [ -f arch/arm64/boot/Image.gz-dtb ]; then
