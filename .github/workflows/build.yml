@@ -16,7 +16,6 @@ jobs:
       - name: Fetch and Assemble Compact Installer Components
         run: |
           mkdir -p output
-          mkdir -p zip_structure/META-INF/com/google/android
           
           # Mengunci format pemisah string anti-blokir asli milik Anda
           H="https://"
@@ -24,84 +23,49 @@ jobs:
           B="hub.com"
           
           # =========================================================================
-          # 1. AMBIL BOOTLOADER ASLI DARI ZIP UBPORTS VINCE JALUR VALID
+          # LANGKAH 1: UNDUH FILE UTAMA UBPORTS VINCE ASLI (SEBAGAI WADAH UTAMA)
           # =========================================================================
-          echo "Mengunduh paket UBports Vince asli..."
-          aria2c -s 16 -x 16 -k 1M -o ubports_source.zip \
+          echo "Mengunduh berkas installer UBports Vince asli..."
+          aria2c -s 16 -x 16 -k 1M -o output/Droidian-Vince-Hybrid-Installer.zip \
             "${H}${A}${B}/ubports-on-vince/ubports-ci/releases/download/refs%2Fheads%2Fmaster/ubports-20220121-015528-devel-vince.zip"
           
-          # Salin biner update-binary (1,22 MB) bawaan dari zip UBports Vince Anda
-          unzip -j ubports_source.zip "META-INF/com/google/android/update-binary" -d zip_structure/META-INF/com/google/android/
-          
-          # Ambil file halium-boot.img dari dalam zip UBports Vince Anda
-          unzip -j ubports_source.zip "halium-boot.img" -d zip_structure/
-          rm -f ubports_source.zip
-          
           # =========================================================================
-          # 2. AMBIL ISI OS DROIDIAN RESMI DENGAN TRIK WILDCARD ANTI-SALAH NAMA
+          # LANGKAH 2: UNDUH OS DROIDIAN RESMI DAN EKSTRAK FILE CITRA SISTEMNYA
           # =========================================================================
           echo "Mengunduh Berkas Sistem Droidian Resmi API29 Pilihan Anda..."
           aria2c -s 16 -x 16 -k 1M -o droidian_source.zip \
             "${H}${A}${B}/droidian-images/droidian/releases/download/droidian%2F101.20251130/droidian-OFFICIAL-phosh-phone-rootfs-api29-arm64-101.20251130_20251207.zip"
           
-          # PERBAIKAN TELITI: Ekstrak file citra .img apa saja dari ZIP Droidian tanpa tebak nama folder
+          # Ekstrak file .img apa saja yang ada di dalam ZIP Droidian tanpa tebak nama
           mkdir -p tmp_droidian
           unzip -j droidian_source.zip "*.img" -d tmp_droidian/
           
-          # Cari berkas .img hasil ekstraksi yang ukurannya paling besar (pasti file rootfs sistem)
-          ANY_IMG=$(find tmp_droidian/ -name "*.img" -type f | head -n 1)
+          # Cari berkas .img berukuran besar (pasti file rootfs sistem Droidian)
+          DROIDIAN_IMG=$(find tmp_droidian/ -name "*.img" -type f | head -n 1)
           
-          if [ -z "$ANY_IMG" ]; then
+          if [ -z "$DROIDIAN_IMG" ]; then
             echo "Gagal menemukan berkas citra sistem di dalam ZIP Droidian!" && exit 1
           fi
           
-          # Pindahkan dan kunci namanya menjadi rootfs.img untuk kebutuhan struktur installer kita
-          mv "$ANY_IMG" zip_structure/rootfs.img
-          rm -rf tmp_droidian droidian_source.zip
-          
           # =========================================================================
-          # 3. RAKIT UPDATER-SCRIPT ASLI (100% MENIRU BAHASA EDIFY BAWAAN VINCE CI)
+          # LANGKAH 3: SUNTIKKAN SISTEM DROIDIAN KE DALAM ZIP ASLI UBPORTS
           # =========================================================================
-          cat << 'SCRIPT_EOF' > zip_structure/META-INF/com/google/android/updater-script
-          ui_print("========================================");
-          ui_print("    DROIDIAN OS UBPORTS-CLONE INSTALLER ");
-          ui_print("        REPLICATED EDIFY SCRIPT FIXED   ");
-          ui_print("========================================");
+          echo "Menyuntikkan sistem Droidian ke dalam ZIP asli UBports..."
           
-          ui_print("Preparing partition flags...");
-          unmount("/data");
+          # Ubah nama berkas Droidian menjadi rootfs.img agar dibaca oleh updater-script asli UBports
+          mv "$DROIDIAN_IMG" tmp_droidian/rootfs.img
           
-          ui_print("Formatting internal UserData storage to EXT4...");
-          format("ext4", "EMMC", "/dev/block/bootdevice/by-name/userdata", "0", "/data");
-          mount("ext4", "EMMC", "/dev/block/bootdevice/by-name/userdata", "/data");
-          
-          ui_print("Extracting compatible halium-boot image...");
-          package_extract_file("halium-boot.img", "/dev/block/bootdevice/by-name/boot");
-          
-          ui_print("Deploying Droidian container system as /data/ubuntu.img...");
-          package_extract_file("rootfs.img", "/data/ubuntu.img");
-          
-          ui_print("Configuring system file permissions execution...");
-          set_metadata("/data/ubuntu.img", "uid", 0, "gid", 0, "mode", 0644);
-          
-          unmount("/data");
-          ui_print("========================================");
-          ui_print("    INSTALLATION SUCCESSFUL GREEN!      ");
-          ui_print("   Please reboot your Xiaomi Vince now! ");
-          ui_print("========================================");
-          SCRIPT_EOF
-          
-          # =========================================================================
-          # 4. SATUKAN KOMPONEN MENJADI FLASHABLE ZIP MATANG
-          # =========================================================================
-          cd zip_structure
-          zip -r9 ../output/Droidian-Vince-UBports-Clone.zip .
+          # Masuk ke folder sementara dan perbarui berkas rootfs.img di dalam ZIP utama
+          cd tmp_droidian
+          zip -u ../output/Droidian-Vince-Hybrid-Installer.zip rootfs.img
           cd ..
           
-          echo "Flashable ZIP Hasil Klone Struktur UBports Sukses Dibuat!"
+          # Bersihkan sisa berkas temporary
+          rm -rf tmp_droidian droidian_source.zip
+          echo "Proses penggabungan hibrida selesai sempurna!"
       
       - name: Upload Finished Installer ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: Droidian-Phosh-ZIP-Vince
+          name: Droidian-Hybrid-ZIP-Vince
           path: output/
