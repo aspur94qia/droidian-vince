@@ -32,10 +32,10 @@ jobs:
           
       - name: Download Official Android Clang Toolchain
         run: |
-          # Mengunduh Clang Google resmi untuk kompilasi kernel modern
+          # Menggunakan cermin (mirror) GitLab resmi agar aman dari blokir Google Source
           mkdir -p clang
-          aria2c -s16 -x16 -k1M "https://googlesource.com" -o clang.tar.gz
-          tar -C clang -xf clang.tar.gz
+          aria2c -s16 -x16 -k1M "https://gitlab.com" -o clang.tar.gz
+          tar -C clang --strip-components=1 -xf clang.tar.gz
           rm -f clang.tar.gz
           
       - name: Compile Boot Image
@@ -44,15 +44,14 @@ jobs:
           CLANG_DIR=$(pwd)/clang/bin
           cd kernel
           
-          # Mengatur jalur compiler ke Clang LLVM resmi Android
           export ARCH=arm64
           export PATH="$CLANG_DIR:$PATH"
           
-          # Menjinakkan GCC pembantu agar tidak rewel membaca kode teks lama
+          # Bendera compiler untuk meredam kecacatan teks kode kernel lama msm8953
           export KCFLAGS="-fno-pic -Wno-pointer-sign -Wno-format -Wno-error=unused-but-set-variable -Wno-error=packed-not-aligned -Wno-error=maybe-uninitialized"
           
           make msm8953_defconfig
-          # Melakukan kompilasi menggunakan mesin Clang LLVM
+          # Eksekusi kompilasi kernel terpadu dengan Clang LLVM
           make -j$(nproc) CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- KCFLAGS="$KCFLAGS"
           
           if [ -f arch/arm64/boot/Image.gz-dtb ]; then
