@@ -25,12 +25,10 @@ jobs:
           B="hub.com"
           
           # =========================================================================
-          # PERBAIKAN TOTAL TAUTAN: Mengalihkan unduhan ke Server Rilis Aktif GitHub Droidian
+          # PERBAIKAN TAUTAN MUTLAK: Mengunduh Berkas ZIP Resmi Temuan Anda
           # =========================================================================
-          echo "Mengunduh Rootfs Droidian asli (Bypass API29 GSI via GitHub Release)..."
-          aria2c -s 16 -x 16 -k 1M -o zip_structure/images/rootfs.tar.zst \
-            "${H}://github.com" || \
-          aria2c -s 16 -x 16 -k 1M -o zip_structure/images/rootfs.tar.zst \
+          echo "Mengunduh Berkas Sistem Droidian Resmi API29 Temuan Anda..."
+          aria2c -s 16 -x 16 -k 1M -o zip_structure/images/droidian_system.zip \
             "${H}://github.com"
           
           echo "Mengunduh komponen Boot Halium Resmi..."
@@ -38,7 +36,7 @@ jobs:
             "${H}://github.com"
           # =========================================================================
             
-          # 3. Buat file Vendor Image dummy esensial berukuran tipis untuk memicu bypass aturan flashing TWRP
+          # 3. Buat file Vendor Image dummy esensial untuk memicu bypass aturan flashing TWRP
           echo "Membuat Driver Vendor penyesuai..."
           dd if=/dev/zero of=zip_structure/images/vendor.img bs=1M count=32
           
@@ -82,15 +80,14 @@ jobs:
           ui_print "Mounting clean /data partition..."
           /sbin/mount $DATA_PATH /data
           
-          # Ekstrak arsip OS Droidian asli langsung ke dalam partisi UserData HP Anda
-          ui_print "Extracting high-compressed Droidian Rootfs into UserData..."
-          busybox tar --zstd -xf /images/rootfs.tar.zst -C /data/ --strip-components=1 || \
-          busybox tar --zstd -xf /images/rootfs.tar.zst -C /data/ || true
+          # Ekstrak file zip sistem Droidian Phosh resmi langsung ke dalam partisi UserData HP Anda
+          ui_print "Extracting Official Droidian Phosh System into UserData..."
+          busybox unzip -q /images/droidian_system.zip -d /data/ || true
           
-          # Injeksi aturan berkas initrd agar sinkron dengan halium-boot UBports Vince Anda
-          ui_print "Creating Halium initrd system link rules..."
-          if [ -d /data/rootfs ]; then
-            mv /data/rootfs /data/rootfs_data
+          # Menyelaraskan struktur berkas penamaan GSI agar cocok dengan halium-boot UBports Vince Anda
+          ui_print "Adjusting system image structures for Vince boot compatibility..."
+          if [ -f /data/rootfs.img ]; then
+            mv /data/rootfs.img /data/ubuntu.img
           fi
           
           /sbin/umount /data
@@ -107,13 +104,13 @@ jobs:
           
           # 5. Satukan struktur direktori instalasi menjadi berkas ZIP flashable tunggal
           cd zip_structure
-          zip -r9 ../output/Droidian-Vince-UltraCompact-Installer.zip .
+          zip -r9 ../output/Droidian-Vince-Phosh-Installer.zip .
           cd ..
           
-          echo "Paket Flashable ZIP Ekonomis Selesai Dibuat!"
+          echo "Paket Flashable ZIP Sukses Dibuat!"
       
       - name: Upload Finished Installer ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: Droidian-Compact-ZIP-Vince
+          name: Droidian-Phosh-ZIP-Vince
           path: output/
