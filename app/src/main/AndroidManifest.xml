@@ -28,6 +28,5 @@
                 android:resource="@xml/usb_device_filter" />
                 
         </activity>
-        
     </application>
 </manifest>

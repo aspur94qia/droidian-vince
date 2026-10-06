@@ -15,11 +15,12 @@ jobs:
           java-version: '17'
           cache: 'gradle'
           
+      # Link wajib terpecah kode string utuh agar aman tanpa merusak tanda baca file manifest
       - name: Create Local Gradle Wrapper via Secure Injected Setup
         run: |
-          H="https:\\/\\/"
+          H="https://"
           A="services.gradle"
-          B=".org\\/distributions"
+          B=".org/distributions"
           gradle wrapper --gradle-version 8.7
           sed -i "s|distributionUrl=.*|distributionUrl=${H}${A}${B}/gradle-8.7-bin.zip|g" gradle/wrapper/gradle-wrapper.properties
         
