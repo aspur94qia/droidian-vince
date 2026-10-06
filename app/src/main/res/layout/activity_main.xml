@@ -1,5 +1,3 @@
-xmlOptions="<?xml version='1.0' encoding='utf-8'?>"
-cat << 'EOF' > app/src/main/res/layout/activity_main.xml
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://android.com"
     xmlns:app="http://android.com"
