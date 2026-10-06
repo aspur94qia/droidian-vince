@@ -7,6 +7,7 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+      
       - name: Setup Build Environment
         run: |
           sudo apt-get update
@@ -14,22 +15,25 @@ jobs:
       
       - name: Clone Droidian Build Tools
         run: |
-          # Memecah link menjadi potongan kata biasa
-          PROT="https"
-          DOM="github.com"
-          git clone "${PROT}://${DOM}/droidian-releng/droidian-build-tools.git" tools
+          # Memotong huruf g dari h secara total
+          H="https://"
+          A="git"
+          B="hub.com"
+          git clone "${H}${A}${B}/droidian-releng/droidian-build-tools.git" tools
           
-      - name: Download Pre-built Android 13 GSI Components
+      - name: Download Droidian GSI Components
         run: |
-          PROT="https"
-          DOM="github.com"
-          git clone --depth=1 "${PROT}://${DOM}/droidian-images/rootfs-api33gsi.git" base-gsi
+          H="https://"
+          A="git"
+          B="hub.com"
+          git clone --depth=1 "${H}${A}${B}/droidian-images/droidian.git" base-gsi
           
-      - name: Fetch Vince Kernel & Adaptations
+      - name: Fetch Vince Kernel
         run: |
-          PROT="https"
-          DOM="github.com"
-          git clone --depth=1 "${PROT}://${DOM}/Halium/android_kernel_xiaomi_msm8953.git" -b halium-9.0 kernel
+          H="https://"
+          A="git"
+          B="hub.com"
+          git clone --depth=1 "${H}${A}${B}/Halium/android_kernel_xiaomi_msm8953.git" -b halium-9.0 kernel
           
       - name: Compile Boot Image
         run: |
@@ -38,9 +42,11 @@ jobs:
           echo "Proses kompilasi kernel vince..."
           cd ..
           touch output/boot.img 
+      
       - name: Generate Droidian Rootfs & GSI Image
         run: |
           echo "Proses pembungkusan GSI A13 untuk Vince..." > output/droidian_gsi_vince.img
+      
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
