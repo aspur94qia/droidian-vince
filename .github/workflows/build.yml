@@ -18,63 +18,60 @@ jobs:
           mkdir -p output
           mkdir -p tmp_workspace
           
-          # Mengunci format pemisah string anti-blokir asli milik Anda
           H="https://"
           A="git"
           B="hub.com"
           
           # =========================================================================
-          # LANGKAH 1: UNDUH FILE UTAMA UBPORTS VINCE ASLI (SEBAGAI WADAH UTAMA)
+          # LANGKAH 1: UNDUH FILE UTAMA UBPORTS VINCE ASLI
           # =========================================================================
           echo "Mengunduh berkas installer UBports Vince asli..."
           aria2c -s 16 -x 16 -k 1M -o output/Droidian-Vince-Hybrid-Installer.zip \
             "${H}${A}${B}/ubports-on-vince/ubports-ci/releases/download/refs%2Fheads%2Fmaster/ubports-20220121-015528-devel-vince.zip"
           
+          echo "Membersihkan file sistem lama di dalam ZIP wadah..."
+          zip -d output/Droidian-Vince-Hybrid-Installer.zip rootfs.img.gz rootfs.img || true
+
           # =========================================================================
-          # LANGKAH 2: UNDUH OS DROIDIAN RESMI DAN KOMPRES KE FORMAT .IMG.GZ (FIXED)
+          # LANGKAH 2: GUNAKAN VARIAN DROIDIAN CORE/MINIMAL (UKURAN RAMPING TARGET 500MB)
           # =========================================================================
-          echo "Mengunduh Berkas Sistem Droidian Resmi API29 Pilihan Anda..."
+          echo "Mengunduh Berkas Sistem Droidian Varian CORE API29 yang Jauh Lebih Ringan..."
+          # Mengalihkan target unduhan ke varian rootfs-api29 minimal tanpa bloatware GUI berat
           aria2c -s 16 -x 16 -k 1M -o droidian_source.zip \
-            "${H}${A}${B}/droidian-images/droidian/releases/download/droidian%2F101.20251130/droidian-OFFICIAL-phosh-phone-rootfs-api29-arm64-101.20251130_20251207.zip"
+            "${H}${A}${B}/droidian-images/droidian/releases/download/droidian%2F101.20251130/droidian-OFFICIAL-core-rootfs-api29-arm64-101.20251130_20251207.zip"
           
-          # Ekstrak file citra .img utama dari dalam ZIP Droidian langsung ke tmp_workspace
           unzip -j droidian_source.zip "*.img" -d tmp_workspace/
           rm -f droidian_source.zip
           
-          # PERBAIKAN: Menghapus perintah mv duplikat karena berkas hasil unzip sudah otomatis bernama rootfs.img
-          # Lakukan kompresi maksimal dengan Gzip menjadi format rootfs.img.gz (Sesuai Struktur UBports)
-          echo "Mengompresi sistem Droidian menjadi format Gzip (.img.gz)..."
+          echo "Mengompresi sistem Droidian secara maksimal (.img.gz)..."
           gzip -9 tmp_workspace/rootfs.img
           
           # =========================================================================
-          # LANGKAH 3: KOREKSI TOTAL UPDATER-SCRIPT (METODE LURUS KEDUA FILE DI /DATA)
+          # LANGKAH 3: KOREKSI TOTAL UPDATER-SCRIPT (ANTI-ERROR DETEKSI TWRP)
           # =========================================================================
-          echo "Menyusun skrip updater-script Edify hibrida asli..."
+          echo "Menyusun skrip updater-script Edify hibrida bersih..."
           mkdir -p tmp_meta/META-INF/com/google/android
           cat << 'SCRIPT_EOF' > tmp_meta/META-INF/com/google/android/updater-script
           ui_print("========================================");
           ui_print("    DROIDIAN OS UBPORTS-HYBRID VINCE    ");
-          ui_print("       100% ACCURATE DATA LOOP METHOD   ");
+          ui_print("       COMPACT SLIM DATA LOOP METHOD    ");
           ui_print("========================================");
           
           ui_print("Unmounting block slots...");
+          abort_if_no_match = "false";
           unmount("/data");
           unmount("/system");
           
-          # Langkah 1: Suntik berkas bootloader halium langsung ke partisi boot fisik
           ui_print("1. Flashing compatible Halium boot image...");
           package_extract_file("halium-boot.img", "/dev/block/bootdevice/by-name/boot");
           
-          # Langkah 2: Format total partisi UserData (/data) ke sistem berkas ext4 bersih
           ui_print("2. Formatting /data (UserData) partition to EXT4...");
-          format("ext4", "EMMC", "/dev/block/bootdevice/by-name/userdata", "0", "/data");
-          mount("ext4", "EMMC", "/dev/block/bootdevice/by-name/userdata", "/data");
+          format("ext4", "EMMC", "/dev/block/by-name/userdata", "0", "/data");
+          mount("ext4", "EMMC", "/dev/block/by-name/userdata", "/data");
           
-          # Langkah 3: Ekstrak berkas driver system.img.gz milik UBports langsung ke folder /data
           ui_print("3. Deploying Android Driver Container to /data/system.img...");
           package_extract_file("system.img.gz", "/data/system.img");
           
-          # Langkah 4: Ekstrak berkas OS Droidian rootfs.img.gz langsung ke folder /data sebagai ubuntu.img
           ui_print("4. Deploying Droidian Debian Rootfs to /data/ubuntu.img...");
           package_extract_file("rootfs.img.gz", "/data/ubuntu.img");
           
@@ -89,23 +86,20 @@ jobs:
           SCRIPT_EOF
           
           # =========================================================================
-          # LANGKAH 4: SUNTIKKAN KEDUA BERKAS MODIFIKASI KE ZIP UTAMA
+          # LANGKAH 4: SUNTIK KEMBALI DENGAN TINGKAT KOMPRESI TERTINGGI (-9)
           # =========================================================================
-          echo "Memperbarui paket ZIP utama..."
+          echo "Menyuntikkan pembaruan komponen baru dengan kompresi tingkat 9..."
           
-          # Masukkan file updater-script Edify yang baru ke dalam wadah ZIP UBports
           cd tmp_meta
-          zip -u ../output/Droidian-Vince-Hybrid-Installer.zip META-INF/com/google/android/updater-script
+          zip -9ur ../output/Droidian-Vince-Hybrid-Installer.zip META-INF/com/google/android/updater-script
           cd ..
           
-          # Masukkan file rootfs.img.gz Droidian baru ke dalam wadah ZIP UBports
           cd tmp_workspace
-          zip -u ../output/Droidian-Vince-Hybrid-Installer.zip rootfs.img.gz
+          zip -9ur ../output/Droidian-Vince-Hybrid-Installer.zip rootfs.img.gz
           cd ..
           
-          # Bersihkan ruang sisa temporary
           rm -rf tmp_workspace tmp_meta
-          echo "Proses penggabungan hibrida selesai sempurna!"
+          echo "Proses re-packaging hibrida ramping selesai sempurna!"
       
       - name: Upload Finished Installer ZIP
         uses: actions/upload-artifact@v4
