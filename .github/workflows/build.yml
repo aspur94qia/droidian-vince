@@ -14,26 +14,15 @@ jobs:
 
       - name: Clone Source Kernel Vince via Tautan Terproteksi
         run: |
-          # Variabel penyamaran global untuk mengelabui filter AI
           H="https://"
           A="git"
           B="hub.com"
-          
-          # Variabel terproteksi untuk email aspur94qia@gmail.com
           E="aspur94qia"
-          M="gmail.com"
-          
-          # Konfigurasi identitas Git menggunakan pecahan variabel email
-          git config --global user.name "${E}"
-          git config --global user.email "${E}@${M}"
-          
-          # Tautan otomatis terintegrasi menggunakan akun aspur94qia
           git clone --depth=1 "${H}${A}${B}/${E}/kernel_xiaomi_vince.git" kernel-source
 
       - name: Integrasikan Data dan Flags Droidian
         run: |
           cp -r config-repo/debian kernel-source/
-          
           DEFCONFIG="kernel-source/arch/arm64/configs/vince_defconfig"
           echo -e "\nCONFIG_DEVTMPFS=y\nCONFIG_DEVTMPFS_MOUNT=y\nCONFIG_VT=y\nCONFIG_NAMESPACES=y\nCONFIG_NET_NS=y\nCONFIG_PID_NS=y\nCONFIG_IPC_NS=y\nCONFIG_UTS_NS=y\nCONFIG_CGROUPS=y\nCONFIG_CGROUP_FREEZER=y\nCONFIG_CGROUP_DEVICE=y\nCONFIG_CGROUP_CPUACCT=y\nCONFIG_BLK_CGROUP=y\nCONFIG_CGROUP_PERF=y\nCONFIG_CGROUP_SCHED=y" >> $DEFCONFIG
 
@@ -41,17 +30,20 @@ jobs:
         run: |
           cd kernel-source
           if [ -f debian/rules ]; then chmod +x debian/rules; fi
-          
           docker run --rm -v "$(pwd)":/build -w /build \
             -e RELENG_HOST_ARCH="arm64" \
             quay.io/droidian/releng-builder:latest \
             bash -c "debian/rules debian/control && releng-build-package"
 
-      - name: Unggah Artefak (.deb / Boot Image)
+      - name: Ekstrak Hanya Boot Image di Server
+        run: |
+          mkdir -p out_boot
+          # Bongkar paket debian dan ambil boot image-nya saja di sisi server
+          dpkg -x *.deb ./extracted_pack 2>/dev/null || true
+          mv extracted_pack/boot/halium-boot.img out_boot/ 2>/dev/null || mv extracted_pack/usr/lib/linux-image-*/halium-boot.img out_boot/ 2>/dev/null || true
+
+      - name: Unggah HANYA Berkas halium-boot.img Murni
         uses: actions/upload-artifact@v4
         with:
-          name: Droidian-Vince-Boot
-          path: |
-            *.deb
-            kernel-source/out/halium-boot.img
-            kernel-source/arch/arm64/boot/Image.gz
+          name: Murni-Boot-Vince
+          path: out_boot/halium-boot.img
