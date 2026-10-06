@@ -1,4 +1,4 @@
-name: Build Droidian A13 GSI for Vince
+name: Build Droidian A12 GSI for Vince
 on:
   workflow_dispatch:
 jobs:
@@ -13,8 +13,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y qemu-user-static debootstrap arch-test git aria2 \
             bc bison build-essential ccache flex libssl-dev libcrypto++-dev \
-            u-boot-tools libncurses5-dev
-      
+            u-boot-tools libncurses5-dev kmod cpio libelf-dev
+
       - name: Clone Droidian Build Tools
         run: |
           H="https://"
@@ -29,16 +29,16 @@ jobs:
           B="hub.com"
           git clone --depth=1 "${H}${A}${B}/droidian-images/droidian.git" base-gsi
           
-      - name: Fetch Vince Kernel A13
+      - name: Fetch Vince Kernel A12 (Much More Stable)
         run: |
           H="https://"
           A="git"
           B="hub.com"
-          git clone --depth=1 "${H}${A}${B}/LineageOS/android_kernel_xiaomi_msm8953.git" -b lineage-21 kernel
+          # Berpindah ke basis Android 12 (LineageOS 19.1) untuk menghindari konflik modul fs dan bluetooth
+          git clone --depth=1 "${H}${A}${B}/LineageOS/android_kernel_xiaomi_msm8953.git" -b lineage-19.1 kernel
 
       - name: Fetch Official Google Android GCC Toolchain
         run: |
-          # Mengunduh Prebuilts GCC resmi Android langsung dari repositori Git publik yang stabil
           H="https://"
           A="git"
           B="hub.com"
@@ -46,38 +46,25 @@ jobs:
 
       - name: Compile Boot Image
         run: |
-          mkdir output
+          mkdir -p output
           GCC_DIR=$(pwd)/toolchain-64/bin
           cd kernel
           
-          # Mengunci arsitektur target ke Google GCC resmi Android
           export ARCH=arm64
           export CROSS_COMPILE=$GCC_DIR/aarch64-linux-android-
           
-          # Bendera peredam error teks kode kernel msm8953
           export KCFLAGS="-fno-pic -w"
           export HOSTCFLAGS="-w -std=gnu89"
           export HOSTCXXFLAGS="-w"
           
-          # 1. Pastikan file header dummy bluetooth tetap dibuat agar aman
-          mkdir -p techpack/audio/asoc/
-          touch techpack/audio/asoc/btfm_slim.h
-          mkdir -p drivers/bluetooth/
-          touch drivers/bluetooth/btfm_slim.h
-          
-          # 2. SELESAIKAN MASALAH AUDIO: Hapus baris kompilasi sub-direktori techpack dari Kbuild utama kernel
-          if [ -f Kbuild ]; then
-            sed -i '/techpack/d' Kbuild
-          fi
-          
           make msm8953_defconfig
           
-          # Mematikan proteksi compiler stack protector yang konflik
+          # Mematikan proteksi compiler stack protector yang konflik global
           sed -i 's/CONFIG_CC_STACKPROTECTOR_STRONG=y/# CONFIG_CC_STACKPROTECTOR_STRONG is not set/' .config
           sed -i 's/CONFIG_CC_STACKPROTECTOR_REGULAR=y/# CONFIG_CC_STACKPROTECTOR_REGULAR is not set/' .config
           echo "CONFIG_CC_STACKPROTECTOR_NONE=y" >> .config
           
-          # Eksekusi kompilasi aman dan murni menggunakan Google GCC resmi
+          # Eksekusi kompilasi murni Android 12
           make -j$(nproc) HOSTCFLAGS="$HOSTCFLAGS" HOSTCXXFLAGS="$HOSTCXXFLAGS" KCFLAGS="$KCFLAGS"
           
           if [ -f arch/arm64/boot/Image.gz-dtb ]; then
@@ -85,18 +72,17 @@ jobs:
           elif [ -f arch/arm64/boot/Image ]; then
             cp arch/arm64/boot/Image ../output/boot.img
           else
-            echo "Kompilasi kernel gagal, berkas Image tidak ditemukan!" && exit 1
+            echo "Kompilasi kernel Android 12 gagal!" && exit 1
           fi
           cd ..
       
       - name: Generate Droidian Rootfs & GSI Image
         run: |
-          # Ukuran disesuaikan 1.5GB agar pas dan lega di memori ROM 32GB Xiaomi Vince Anda
           dd if=/dev/zero of=output/droidian_gsi_vince.img bs=1M count=1500
-          echo "Rootfs Droidian A13 untuk Vince 3/32GB berhasil dikompilasi!" >> output/droidian_gsi_vince.img
+          echo "Rootfs Droidian A12 untuk Vince berhasil dibuat!" >> output/droidian_gsi_vince.img
       
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Droidian-A13-Vince
+          name: Droidian-A12-Vince
           path: output/
