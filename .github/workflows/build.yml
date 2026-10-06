@@ -29,21 +29,24 @@ jobs:
           aria2c -s 16 -x 16 -k 1M -o output/Droidian-Vince-Hybrid-Installer.zip \
             "${H}${A}${B}/ubports-on-vince/ubports-ci/releases/download/refs%2Fheads%2Fmaster/ubports-20220121-015528-devel-vince.zip"
           
-          echo "Membersihkan file sistem lama di dalam ZIP wadah..."
+          # MENGHAPUS TOTAL FILE LAMA: Kunci agar ZIP tidak menumpuk jadi 1.5GB
+          echo "Membersihkan file sistem bawaan lama di dalam ZIP wadah..."
           zip -d output/Droidian-Vince-Hybrid-Installer.zip rootfs.img.gz rootfs.img || true
 
           # =========================================================================
-          # LANGKAH 2: GUNAKAN VARIAN DROIDIAN CORE/MINIMAL (UKURAN RAMPING TARGET 500MB)
+          # LANGKAH 2: UNDUH MENGGUNAKAN LINK ASLI ANDA (SUKSES SEBELUMNYA)
           # =========================================================================
-          echo "Mengunduh Berkas Sistem Droidian Varian CORE API29 yang Jauh Lebih Ringan..."
-          # Mengalihkan target unduhan ke varian rootfs-api29 minimal tanpa bloatware GUI berat
+          echo "Mengunduh Berkas Sistem Droidian Menggunakan Link Asli Anda..."
           aria2c -s 16 -x 16 -k 1M -o droidian_source.zip \
-            "${H}${A}${B}/droidian-images/droidian/releases/download/droidian%2F101.20251130/droidian-OFFICIAL-core-rootfs-api29-arm64-101.20251130_20251207.zip"
+            "${H}${A}${B}/droidian-images/droidian/releases/download/droidian%2F101.20251130/droidian-OFFICIAL-phosh-phone-rootfs-api29-arm64-101.20251130_20251207.zip"
           
           unzip -j droidian_source.zip "*.img" -d tmp_workspace/
           rm -f droidian_source.zip
           
-          echo "Mengompresi sistem Droidian secara maksimal (.img.gz)..."
+          # Memastikan penamaan tepat untuk proses gzip
+          mv tmp_workspace/*.img tmp_workspace/rootfs.img
+          
+          echo "Mengompresi ulang sistem Droidian dengan level kompresi tertinggi (-9)..."
           gzip -9 tmp_workspace/rootfs.img
           
           # =========================================================================
@@ -66,8 +69,8 @@ jobs:
           package_extract_file("halium-boot.img", "/dev/block/bootdevice/by-name/boot");
           
           ui_print("2. Formatting /data (UserData) partition to EXT4...");
-          format("ext4", "EMMC", "/dev/block/by-name/userdata", "0", "/data");
-          mount("ext4", "EMMC", "/dev/block/by-name/userdata", "/data");
+          format("ext4", "EMMC", "/dev/block/bootdevice/by-name/userdata", "0", "/data");
+          mount("ext4", "EMMC", "/dev/block/bootdevice/by-name/userdata", "/data");
           
           ui_print("3. Deploying Android Driver Container to /data/system.img...");
           package_extract_file("system.img.gz", "/data/system.img");
@@ -88,7 +91,7 @@ jobs:
           # =========================================================================
           # LANGKAH 4: SUNTIK KEMBALI DENGAN TINGKAT KOMPRESI TERTINGGI (-9)
           # =========================================================================
-          echo "Menyuntikkan pembaruan komponen baru dengan kompresi tingkat 9..."
+          echo "Menyuntikkan komponen baru ke dalam ZIP..."
           
           cd tmp_meta
           zip -9ur ../output/Droidian-Vince-Hybrid-Installer.zip META-INF/com/google/android/updater-script
@@ -99,7 +102,7 @@ jobs:
           cd ..
           
           rm -rf tmp_workspace tmp_meta
-          echo "Proses re-packaging hibrida ramping selesai sempurna!"
+          echo "Proses re-packaging selesai!"
       
       - name: Upload Finished Installer ZIP
         uses: actions/upload-artifact@v4
