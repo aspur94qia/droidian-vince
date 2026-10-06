@@ -11,9 +11,10 @@ jobs:
       - name: Setup Build Environment
         run: |
           sudo apt-get update
+          # Menginstal llvm, lld, dan clang bawaan Ubuntu resmi untuk cross-compile
           sudo apt-get install -y qemu-user-static debootstrap arch-test git aria2 \
             bc bison build-essential ccache flex libssl-dev libcrypto++-dev \
-            u-boot-tools libncurses5-dev libssl-dev llvm lld clang
+            u-boot-tools libncurses5-dev llvm lld clang crossbuild-essential-arm64
       
       - name: Clone Droidian Build Tools
         run: |
@@ -30,29 +31,21 @@ jobs:
           DOM=$(echo "moc.buhtig" | rev)
           git clone --depth=1 "https://${DOM}/LineageOS/android_kernel_xiaomi_msm8953.git" -b lineage-21 kernel
           
-      - name: Download Official Android Clang Toolchain
-        run: |
-          # Menggunakan cermin (mirror) GitLab resmi agar aman dari blokir Google Source
-          mkdir -p clang
-          aria2c -s16 -x16 -k1M "https://gitlab.com" -o clang.tar.gz
-          tar -C clang --strip-components=1 -xf clang.tar.gz
-          rm -f clang.tar.gz
-          
       - name: Compile Boot Image
         run: |
           mkdir output
-          CLANG_DIR=$(pwd)/clang/bin
           cd kernel
           
+          # Setup arsitektur dan gunakan Clang bawaan Ubuntu
           export ARCH=arm64
-          export PATH="$CLANG_DIR:$PATH"
+          export CROSS_COMPILE=aarch64-linux-gnu-
           
-          # Bendera compiler untuk meredam kecacatan teks kode kernel lama msm8953
-          export KCFLAGS="-fno-pic -Wno-pointer-sign -Wno-format -Wno-error=unused-but-set-variable -Wno-error=packed-not-aligned -Wno-error=maybe-uninitialized"
+          # Bendera compiler untuk meredam peringatan teks kode kernel msm8953
+          export KCFLAGS="-fno-pic -Wno-pointer-sign -Wno-format -Wno-error=unused-but-set-variable -Wno-error=packed-not-aligned -Wno-error=maybe-uninitialized -Wno-error=visibility"
           
           make msm8953_defconfig
-          # Eksekusi kompilasi kernel terpadu dengan Clang LLVM
-          make -j$(nproc) CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- KCFLAGS="$KCFLAGS"
+          # Melakukan kompilasi menggunakan Clang & LLD internal Ubuntu
+          make -j$(nproc) CC=clang LD=ld.lld CROSS_COMPILE=aarch64-linux-gnu- KCFLAGS="$KCFLAGS"
           
           if [ -f arch/arm64/boot/Image.gz-dtb ]; then
             cp arch/arm64/boot/Image.gz-dtb ../output/boot.img
