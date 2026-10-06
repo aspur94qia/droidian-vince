@@ -13,7 +13,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y qemu-user-static debootstrap arch-test git aria2 \
             bc bison build-essential ccache flex libssl-dev libcrypto++-dev \
-            u-boot-tools libncurses5-dev kmod cpio libelf-dev python2 python-is-python3
+            u-boot-tools libncurses5-dev kmod cpio libelf-dev python2 python-is-python2
 
       - name: Clone Droidian Build Tools
         run: |
@@ -58,11 +58,6 @@ jobs:
           export HOSTCFLAGS="-w -std=gnu89"
           export HOSTCXXFLAGS="-w"
           
-          # Konversi Skrip gcc-wrapper.py agar Kompatibel dengan Python 3
-          if [ -f scripts/gcc-wrapper.py ]; then
-            sed -i 's/print >> sys.stderr, \(.*\)/print(\1, file=sys.stderr)/g' scripts/gcc-wrapper.py
-          fi
-          
           make msm8953_defconfig
           
           # Mematikan proteksi compiler stack protector yang konflik global
@@ -70,7 +65,7 @@ jobs:
           sed -i 's/CONFIG_CC_STACKPROTECTOR_REGULAR=y/# CONFIG_CC_STACKPROTECTOR_REGULAR is not set/' .config
           echo "CONFIG_CC_STACKPROTECTOR_NONE=y" >> .config
           
-          # Eksekusi kompilasi murni Android 12
+          # Eksekusi kompilasi murni Android 12 menggunakan lingkungan Python 2 asli
           make -j$(nproc) HOSTCFLAGS="$HOSTCFLAGS" HOSTCXXFLAGS="$HOSTCXXFLAGS" KCFLAGS="$KCFLAGS"
           
           if [ -f arch/arm64/boot/Image.gz-dtb ]; then
