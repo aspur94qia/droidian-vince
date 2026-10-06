@@ -13,11 +13,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y qemu-user-static debootstrap arch-test git aria2 \
             bc bison build-essential ccache flex libssl-dev libcrypto++-dev \
-            u-boot-tools libncurses5-dev llvm lld clang crossbuild-essential-arm64
-          
-          # SOLUSI UTAMA: Paksa sistem Ubuntu menggunakan assembler ARM64 saat memanggil /usr/bin/as
-          sudo rm -f /usr/bin/as
-          sudo ln -s /usr/bin/aarch64-linux-gnu-as /usr/bin/as
+            u-boot-tools libncurses5-dev
       
       - name: Clone Droidian Build Tools
         run: |
@@ -40,15 +36,25 @@ jobs:
           B="hub.com"
           git clone --depth=1 "${H}${A}${B}/LineageOS/android_kernel_xiaomi_msm8953.git" -b lineage-21 kernel
 
+      - name: Fetch Official Google Android GCC Toolchain
+        run: |
+          # Mengunduh Prebuilts GCC resmi Android langsung dari repositori Git publik yang stabil
+          H="https://"
+          A="git"
+          B="hub.com"
+          git clone --depth=1 "${H}${A}${B}/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9.git" toolchain-64
+
       - name: Compile Boot Image
         run: |
           mkdir output
+          GCC_DIR=$(pwd)/toolchain-64/bin
           cd kernel
           
+          # Mengunci arsitektur target ke Google GCC resmi Android
           export ARCH=arm64
-          export CROSS_COMPILE=aarch64-linux-gnu-
+          export CROSS_COMPILE=$GCC_DIR/aarch64-linux-android-
           
-          # Bendera global untuk meredam seluruh warning teks kode lama
+          # Bendera peredam error teks kode kernel msm8953
           export KCFLAGS="-fno-pic -w"
           export HOSTCFLAGS="-w -std=gnu89"
           export HOSTCXXFLAGS="-w"
@@ -60,8 +66,8 @@ jobs:
           sed -i 's/CONFIG_CC_STACKPROTECTOR_REGULAR=y/# CONFIG_CC_STACKPROTECTOR_REGULAR is not set/' .config
           echo "CONFIG_CC_STACKPROTECTOR_NONE=y" >> .config
           
-          # Jalankan kompilasi menggunakan Clang terpadu dengan assembler yang sudah di-symlink
-          make -j$(nproc) CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- HOSTCFLAGS="$HOSTCFLAGS" HOSTCXXFLAGS="$HOSTCXXFLAGS" KCFLAGS="$KCFLAGS"
+          # Eksekusi kompilasi aman dan murni menggunakan Google GCC resmi
+          make -j$(nproc) HOSTCFLAGS="$HOSTCFLAGS" HOSTCXXFLAGS="$HOSTCXXFLAGS" KCFLAGS="$KCFLAGS"
           
           if [ -f arch/arm64/boot/Image.gz-dtb ]; then
             cp arch/arm64/boot/Image.gz-dtb ../output/boot.img
