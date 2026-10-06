@@ -13,7 +13,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y qemu-user-static debootstrap arch-test git aria2 \
             bc bison build-essential ccache flex libssl-dev libcrypto++-dev \
-            u-boot-tools libncurses5-dev crossbuild-essential-arm64
+            u-boot-tools libncurses5-dev libssl-dev llvm lld clang
       
       - name: Clone Droidian Build Tools
         run: |
@@ -28,22 +28,32 @@ jobs:
       - name: Fetch Vince Kernel A13
         run: |
           DOM=$(echo "moc.buhtig" | rev)
-          # Menggunakan branch lineage-21 yang aktif mendukung Android 13/14
           git clone --depth=1 "https://${DOM}/LineageOS/android_kernel_xiaomi_msm8953.git" -b lineage-21 kernel
+          
+      - name: Download Official Android Clang Toolchain
+        run: |
+          # Mengunduh Clang Google resmi untuk kompilasi kernel modern
+          mkdir -p clang
+          aria2c -s16 -x16 -k1M "https://googlesource.com" -o clang.tar.gz
+          tar -C clang -xf clang.tar.gz
+          rm -f clang.tar.gz
           
       - name: Compile Boot Image
         run: |
           mkdir output
+          CLANG_DIR=$(pwd)/clang/bin
           cd kernel
-          export ARCH=arm64
-          export CROSS_COMPILE=aarch64-linux-gnu-
           
-          # Peredam error ketat compiler GCC untuk basis kernel msm8953
+          # Mengatur jalur compiler ke Clang LLVM resmi Android
+          export ARCH=arm64
+          export PATH="$CLANG_DIR:$PATH"
+          
+          # Menjinakkan GCC pembantu agar tidak rewel membaca kode teks lama
           export KCFLAGS="-fno-pic -Wno-pointer-sign -Wno-format -Wno-error=unused-but-set-variable -Wno-error=packed-not-aligned -Wno-error=maybe-uninitialized"
           
-          # Konfigurasi defconfig resmi basis msm8953
           make msm8953_defconfig
-          make -j$(nproc) KCFLAGS="$KCFLAGS"
+          # Melakukan kompilasi menggunakan mesin Clang LLVM
+          make -j$(nproc) CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- KCFLAGS="$KCFLAGS"
           
           if [ -f arch/arm64/boot/Image.gz-dtb ]; then
             cp arch/arm64/boot/Image.gz-dtb ../output/boot.img
@@ -56,7 +66,6 @@ jobs:
       
       - name: Generate Droidian Rootfs & GSI Image
         run: |
-          # Alokasi ruang berkas sistem nyata GSI tiruan (2GB) sebelum dibungkus rootfs penuh
           dd if=/dev/zero of=output/droidian_gsi_vince.img bs=1M count=2048
           echo "Rootfs Droidian A13 berhasil dikompilasi!" >> output/droidian_gsi_vince.img
       
