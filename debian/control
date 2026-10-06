@@ -1,0 +1,10 @@
+Source: linux-vince
+Section: kernel
+Priority: optional
+Maintainer: Vince Port <local@vince.com>
+Build-Depends: debhelper-compat (= 12)
+Standards-Version: 4.5.0
+
+Package: linux-image-vince
+Architecture: arm64
+Description: Droidian Halium 13 Kernel for Xiaomi Redmi 5 Plus

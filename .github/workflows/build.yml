@@ -1,0 +1,48 @@
+name: Build Droidian Halium Boot Vince
+
+on:
+  workflow_dispatch: # Mengaktifkan tombol manual di GitHub Actions
+
+jobs:
+  build-kernel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Konfigurasi Vince
+        uses: actions/checkout@v4
+        with:
+          path: config-repo
+
+      - name: Clone Source Kernel Vince Anda
+        run: |
+          # GANTI URL DI BAWAH INI DENGAN LINK REPO KERNEL ANDROID 13 VINCE ANDA
+          git clone --depth=1 https://github.com kernel-source
+
+      - name: Integrasikan Data dan Flags Droidian
+        run: |
+          # Pindahkan folder debian dari repositori ke dalam source kernel
+          cp -r config-repo/debian kernel-source/
+          
+          # Sisipkan flags LXC/systemd wajib Droidian ke defconfig asli kernel
+          DEFCONFIG="kernel-source/arch/arm64/configs/vince_defconfig"
+          echo -e "\nCONFIG_DEVTMPFS=y\nCONFIG_DEVTMPFS_MOUNT=y\nCONFIG_VT=y\nCONFIG_NAMESPACES=y\nCONFIG_NET_NS=y\nCONFIG_PID_NS=y\nCONFIG_IPC_NS=y\nCONFIG_UTS_NS=y\nCONFIG_CGROUPS=y\nCONFIG_CGROUP_FREEZER=y\nCONFIG_CGROUP_DEVICE=y\nCONFIG_CGROUP_CPUACCT=y\nCONFIG_BLK_CGROUP=y\nCONFIG_CGROUP_PERF=y\nCONFIG_CGROUP_SCHED=y" >> $DEFCONFIG
+
+      - name: Jalankan Kompilasi Docker Releng Droidian
+        run: |
+          cd kernel-source
+          # Regenerasi debian control standar releng
+          if [ -f debian/rules ]; then chmod +x debian/rules; fi
+          
+          # Jalankan container releng builder resmi Droidian
+          docker run --rm -v "$(pwd)":/build -w /build \
+            -e RELENG_HOST_ARCH="arm64" \
+            quay.io/droidian/releng-builder:latest \
+            bash -c "debian/rules debian/control && releng-build-package"
+
+      - name: Unggah Artefak (.deb / Boot Image)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Droidian-Vince-Boot
+          path: |
+            *.deb
+            kernel-source/out/halium-boot.img
+            kernel-source/arch/arm64/boot/Image.gz
