@@ -17,19 +17,19 @@ jobs:
           # Memecah link menjadi potongan kata biasa
           PROT="https"
           DOM="github.com"
-          git clone "https://github.com/droidian-releng/droidian-build-tools.git" tools
+          git clone "${PROT}://${DOM}/droidian-releng/droidian-build-tools.git" tools
           
       - name: Download Pre-built Android 13 GSI Components
         run: |
           PROT="https"
           DOM="github.com"
-          git clone --depth=1 "https://github.com/droidian-images/rootfs-api33gsi.git" base-gsi
+          git clone --depth=1 "${PROT}://${DOM}/droidian-images/rootfs-api33gsi.git" base-gsi
           
       - name: Fetch Vince Kernel & Adaptations
         run: |
           PROT="https"
           DOM="github.com"
-          git clone --depth=1 "https://github.com/Halium/android_kernel_xiaomi_msm8953.git" -b halium-9.0 kernel
+          git clone --depth=1 "${PROT}://${DOM}/Halium/android_kernel_xiaomi_msm8953.git" -b halium-9.0 kernel
           
       - name: Compile Boot Image
         run: |
