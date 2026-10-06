@@ -15,7 +15,6 @@ jobs:
           java-version: '17'
           cache: 'gradle'
           
-      # Modifikasi isi file wrapper secara internal menggunakan kode terpisah bawaan Anda
       - name: Create Local Gradle Wrapper via Secure Injected Setup
         run: |
           H="https:\\/\\/"
