@@ -13,7 +13,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y qemu-user-static debootstrap arch-test git aria2 \
             bc bison build-essential ccache flex libssl-dev libcrypto++-dev \
-            u-boot-tools libncurses5-dev llvm lld clang crossbuild-essential-arm64
+            u-boot-tools libncurses5-dev crossbuild-essential-arm64
       
       - name: Clone Droidian Build Tools
         run: |
@@ -38,10 +38,18 @@ jobs:
           export ARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
           
+          # Bendera penjinak compiler GCC 11 standar Ubuntu
           export KCFLAGS="-fno-pic -Wno-pointer-sign -Wno-format -Wno-error=unused-but-set-variable -Wno-error=packed-not-aligned -Wno-error=maybe-uninitialized -Wno-error=visibility"
           
           make msm8953_defconfig
-          make -j$(nproc) CC=clang LD=ld.lld CROSS_COMPILE=aarch64-linux-gnu- KCFLAGS="$KCFLAGS"
+          
+          # Trik jitu: Mematikan proteksi yang bikin compiler error secara paksa di berkas .config sebelum compile
+          sed -i 's/CONFIG_CC_STACKPROTECTOR_STRONG=y/# CONFIG_CC_STACKPROTECTOR_STRONG is not set/' .config
+          sed -i 's/CONFIG_CC_STACKPROTECTOR_REGULAR=y/# CONFIG_CC_STACKPROTECTOR_REGULAR is not set/' .config
+          echo "CONFIG_CC_STACKPROTECTOR_NONE=y" >> .config
+          
+          # Jalankan kompilasi menggunakan GCC cross-compiler bawaan yang stabil
+          make -j$(nproc) KCFLAGS="$KCFLAGS"
           
           if [ -f arch/arm64/boot/Image.gz-dtb ]; then
             cp arch/arm64/boot/Image.gz-dtb ../output/boot.img
