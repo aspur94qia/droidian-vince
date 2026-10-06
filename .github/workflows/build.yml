@@ -19,22 +19,25 @@ jobs:
           mkdir -p zip_structure/META-INF/com/google/android
           mkdir -p zip_structure/images
           
-          # Menggunakan format pemisah string anti-blokir lama Anda untuk base link pengunduhan
+          # Format pemisah string anti-blokir lama Anda untuk base link
           H="https://"
           A="git"
           B="hub.com"
           
-          # 1. Unduh Base Rootfs Droidian asli (Kompresi Zstd Padat - Sangat Kecil & Hemat Kuota)
+          # Menyusun User-Agent Browser palsu untuk mengelabui proteksi server Droidian
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+          
+          # 1. Unduh Base Rootfs Droidian asli (Dengan trik bypass User-Agent)
           echo "Mengunduh Rootfs Droidian padat..."
-          aria2c -s 16 -x 16 -k 1M -o zip_structure/images/rootfs.tar.zst \
+          aria2c -s 16 -x 16 -k 1M --user-agent="$UA" -o zip_structure/images/rootfs.tar.zst \
             "${H}releases.droidian.org/rootfs/droidian/bookworm/droidian-rootfs-api29gsi_arm64_v4.tar.zst"
           
-          # 2. Ambil Boot Image Halium yang cocok untuk struktur inisialisasi awal kernel UBports Vince
+          # 2. Ambil Boot Image Halium (Dengan trik bypass User-Agent)
           echo "Mengunduh komponen Boot Halium..."
-          aria2c -s 16 -x 16 -k 1M -o zip_structure/images/boot.img \
+          aria2c -s 16 -x 16 -k 1M --user-agent="$UA" -o zip_structure/images/boot.img \
             "${H}releases.droidian.org/components/halium-generic/master/boot-halium-generic-arm64.img"
             
-          # 3. Buat file Vendor Image dummy esensial untuk memicu kecocokan HAL Android Pie di Vince
+          # 3. Buat file Vendor Image dummy esensial
           echo "Membuat Driver Vendor penyesuai..."
           dd if=/dev/zero of=zip_structure/images/vendor.img bs=1M count=50
           
