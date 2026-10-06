@@ -11,13 +11,12 @@ jobs:
       - name: Setup Build Environment
         run: |
           sudo apt-get update
-          sudo apt-get install -y git aria2 zstd zip
+          sudo apt-get install -y git aria2 zip unzip
 
       - name: Fetch and Assemble Compact Installer Components
         run: |
           mkdir -p output
           mkdir -p zip_structure/META-INF/com/google/android
-          mkdir -p zip_structure/images
           
           # Mengunci format pemisah string anti-blokir asli milik Anda
           H="https://"
@@ -25,89 +24,78 @@ jobs:
           B="hub.com"
           
           # =========================================================================
-          # PERBAIKAN TOTAL: Menghapus huruf 'v' palsu agar tautan akurat sesuai gambar
+          # 1. UNDUH ZIP UBPORTS VINCE UNTUK MENGAMBIL BINER INSTALER ASLI (1,22 MB)
           # =========================================================================
-          echo "Mengunduh Berkas Sistem Droidian Resmi API29 Temuan Anda..."
-          aria2c -s 16 -x 16 -k 1M -o zip_structure/images/droidian_system.zip \
-            "${H}${A}${B}/droidian-images/droidian/releases/download/101.20251130_20251207/droidian-OFFICIAL-phosh-phone-rootfs-api29-arm64-101.20251130_20251207.zip"
+          echo "Mengunduh berkas UBports Vince asli..."
+          aria2c -s 16 -x 16 -k 1M -o ubports_source.zip \
+            "${H}${A}${B}/ubports-on-vince/ubports-ci/releases/download/refs%2Fheads%2Fmaster/ubports-20220121-015528-devel-vince.zip"
           
-          echo "Mengunduh komponen Boot Halium Resmi..."
-          aria2c -s 16 -x 16 -k 1M -o zip_structure/images/boot.img \
-            "${H}${A}${B}/droidian-images/droidian/releases/download/101.20251130_20251207/boot-halium-generic-arm64.img"
+          # Ekstrak file update-binary (1,22 MB) asli bawaan UBports ke proyek kita
+          unzip -j ubports_source.zip "META-INF/com/google/android/update-binary" -d zip_structure/META-INF/com/google/android/
+          
+          # Ekstrak boot.img dan system.img asli dari UBports Vince agar hardware-match 100%
+          unzip -j ubports_source.zip "boot.img" -d zip_structure/
+          unzip -j ubports_source.zip "system.img" -d zip_structure/
+          rm -f ubports_source.zip
+          
           # =========================================================================
-            
-          # Buat file Vendor Image dummy esensial untuk memicu bypass aturan flashing TWRP
-          echo "Membuat Driver Vendor penyesuai..."
-          dd if=/dev/zero of=zip_structure/images/vendor.img bs=1M count=32
+          # 2. UNDUH BERKAS DROIDIAN RESMI DARI LINK PILEHAN ANDA YANG AKTIF
+          # =========================================================================
+          echo "Mengunduh Berkas Sistem Droidian Resmi API29 Pilihan Anda..."
+          aria2c -s 16 -x 16 -k 1M -o droidian_source.zip \
+            "${H}${A}${B}/droidian-images/droidian/releases/download/droidian%2F101.20251130/droidian-OFFICIAL-phosh-phone-rootfs-api29-arm64-101.20251130_20251207.zip"
           
-          # BUAT UPDATE-BINARY BERBASIS SHELL SCRIPT ASLI (100% Kebaca di TWRP Tanpa Error 6)
-          cat << 'BIN_EOF' > zip_structure/META-INF/com/google/android/update-binary
-          #!/sbin/sh
-          OUTFD=$2
-          ZIPFILE=$3
+          # Ekstrak rootfs.img asli dari dalam Droidian, lalu ubah namanya menjadi ubuntu.img
+          # agar langsung dikenali oleh bootloader loop-mount UBports di ponsel
+          unzip -p droidian_source.zip rootfs.img > zip_structure/ubuntu.img
+          rm -f droidian_source.zip
           
-          ui_print() {
-            echo -e "ui_print $1\nui_print" >&${OUTFD}
-          }
+          # =========================================================================
+          # 3. RAKIT UPDATER-SCRIPT MURNI (MENIRU BAHASA EDIFY ASLI 1,98 KB UBPORTS)
+          # =========================================================================
+          cat << 'SCRIPT_EOF' > zip_structure/META-INF/com/google/android/updater-script
+          ui_print("========================================");
+          ui_print("    DROIDIAN OS UBPORTS-CLONE INSTALLER ");
+          ui_print("        REPLICATED EDIFY SCRIPT FIXED   ");
+          ui_print("========================================");
           
-          ui_print "========================================"
-          ui_print "    DROIDIAN DEBIAN INSTALLER FOR VINCE "
-          ui_print "        100% AUTOMATED FLASH SCRIPT     "
-          ui_print "========================================"
+          ui_print("Unmounting partitions...");
+          unmount("/data");
+          unmount("/system");
           
-          ui_print "Preparing and mounting partitions..."
-          /sbin/umount /data 2>/dev/null
-          /sbin/umount /vendor 2>/dev/null
+          ui_print("Formatting and mounting system partitions...");
+          format("ext4", "EMMC", "/dev/block/bootdevice/by-name/system", "0", "/system");
           
-          # Flash langsung boot.img ke sektor internal partisi /boot ponsel Vince
-          ui_print "Flashing boot.img to /boot partition..."
-          BOOT_PATH=$(find /dev/block/platform/ -name "boot" | head -n 1)
-          if [ -z "$BOOT_PATH" ]; then BOOT_PATH="/dev/block/bootdevice/by-name/boot"; fi
-          dd if=/images/boot.img of=$BOOT_PATH
+          ui_print("Extracting compatible Halium boot image...");
+          package_extract_file("boot.img", "/dev/block/bootdevice/by-name/boot");
           
-          # Flash vendor.img ke sektor internal partisi /vendor ponsel Vince
-          ui_print "Flashing basic vendor.img to /vendor partition..."
-          VENDOR_PATH=$(find /dev/block/platform/ -name "vendor" | head -n 1)
-          if [ -z "$VENDOR_PATH" ]; then VENDOR_PATH="/dev/block/bootdevice/by-name/vendor"; fi
-          dd if=/images/vendor.img of=$VENDOR_PATH
+          ui_print("Extracting base system hardware drivers...");
+          package_extract_file("system.img", "/dev/block/bootdevice/by-name/system");
           
-          # Lap bersih isi partisi UserData (/data) ke format ext4 murni
-          ui_print "Formatting /data (UserData) partition to EXT4..."
-          DATA_PATH=$(find /dev/block/platform/ -name "userdata" | head -n 1)
-          if [ -z "$DATA_PATH" ]; then DATA_PATH="/dev/block/bootdevice/by-name/userdata"; fi
-          /sbin/mke2fs -t ext4 -F $DATA_PATH
+          ui_print("Formatting internal storage to EXT4...");
+          format("ext4", "EMMC", "/dev/block/bootdevice/by-name/userdata", "0", "/data");
+          mount("ext4", "EMMC", "/dev/block/bootdevice/by-name/userdata", "/data");
           
-          ui_print "Mounting clean /data partition..."
-          /sbin/mount $DATA_PATH /data
+          ui_print("Deploying Droidian rootfs container into /data/ubuntu.img...");
+          package_extract_file("ubuntu.img", "/data/ubuntu.img");
           
-          # Ekstrak file zip sistem Droidian Phosh resmi langsung ke dalam partisi UserData HP Anda
-          ui_print "Extracting Official Droidian Phosh System into UserData..."
-          busybox unzip -q /images/droidian_system.zip -d /data/ || true
+          ui_print("Setting core execution rules...");
+          set_metadata("/data/ubuntu.img", "uid", 0, "gid", 0, "mode", 0644);
           
-          # Menyelaraskan struktur berkas penamaan GSI agar cocok dengan halium-boot UBports Vince Anda
-          ui_print "Adjusting system image structures for Vince boot compatibility..."
-          if [ -f /data/rootfs.img ]; then
-            mv /data/rootfs.img /data/ubuntu.img
-          fi
+          unmount("/data");
+          ui_print("========================================");
+          ui_print("    INSTALLATION SUCCESSFUL GREEN!      ");
+          ui_print("========================================");
+          SCRIPT_EOF
           
-          /sbin/umount /data
-          ui_print "========================================"
-          ui_print "   INSTALLATION COMPLETED SUCCESSFUL!   "
-          ui_print "   Your Vince is ready for Droidian OS! "
-          ui_print "========================================"
-          exit 0
-          BIN_EOF
-          chmod +x zip_structure/META-INF/com/google/android/update-binary
-          
-          # Membuat updater-script kosong sebagai penanda wajib pembacaan biner TWRP
-          echo "# Dummy installer script" > zip_structure/META-INF/com/google/android/updater-script
-          
-          # Satukan struktur direktori instalasi menjadi berkas ZIP flashable tunggal
+          # =========================================================================
+          # 4. KEMAS SELURUH STRUKTUR MENJADI SATU FLASHABLE ZIP TUNGGAL
+          # =========================================================================
           cd zip_structure
-          zip -r9 ../output/Droidian-Vince-Phosh-Installer.zip .
+          zip -r9 ../output/Droidian-Vince-UBports-Clone.zip .
           cd ..
           
-          echo "Paket Flashable ZIP Sukses Dibuat!"
+          echo "Flashable ZIP Hasil Replikasi Akurat Sukses Dibuat!"
       
       - name: Upload Finished Installer ZIP
         uses: actions/upload-artifact@v4
