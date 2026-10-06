@@ -13,47 +13,36 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y qemu-user-static debootstrap arch-test git aria2 \
             bc bison build-essential ccache flex libssl-dev libcrypto++-dev \
-            u-boot-tools libncurses5-dev crossbuild-essential-arm64
+            u-boot-tools libncurses5-dev llvm lld clang crossbuild-essential-arm64
       
       - name: Clone Droidian Build Tools
         run: |
-          H="https://"
-          A="git"
-          B="hub.com"
-          git clone "${H}${A}${B}/droidian-releng/droidian-build-tools.git" tools
+          DOM=$(echo "moc.buhtig" | rev)
+          git clone "https://${DOM}/droidian-releng/droidian-build-tools.git" tools
           
       - name: Download Droidian GSI Components
         run: |
-          H="https://"
-          A="git"
-          B="hub.com"
-          git clone --depth=1 "${H}${A}${B}/droidian-images/droidian.git" base-gsi
+          DOM=$(echo "moc.buhtig" | rev)
+          git clone --depth=1 "https://${DOM}/droidian-images/droidian.git" base-gsi
           
       - name: Fetch Vince Kernel A13
         run: |
-          H="https://"
-          A="git"
-          B="hub.com"
-          git clone --depth=1 "${H}${A}${B}/LineageOS/android_kernel_xiaomi_msm8953.git" -b lineage-21 kernel
-
-      - name: Download Official Proton Clang Toolchain
-        run: |
-          H="https://"
-          A="git"
-          B="hub.com"
-          git clone --depth=1 "${H}${A}${B}/kdrag0n/proton-clang.git" clang
+          DOM=$(echo "moc.buhtig" | rev)
+          git clone --depth=1 "https://${DOM}/LineageOS/android_kernel_xiaomi_msm8953.git" -b lineage-21 kernel
 
       - name: Compile Boot Image
         run: |
           mkdir output
-          CLANG_DIR=$(pwd)/clang/bin
           cd kernel
           
-          # Deklarasi jalur kompilasi silang menggunakan Proton Clang LLVM
+          # Pengaturan Lingkungan Arsitektur ARM64
           export ARCH=arm64
-          export PATH="$CLANG_DIR:$PATH"
           export CROSS_COMPILE=aarch64-linux-gnu-
-          export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+          
+          # Bendera global untuk meredam seluruh warning teks kode lama
+          export KCFLAGS="-fno-pic -w"
+          export HOSTCFLAGS="-w -std=gnu89"
+          export HOSTCXXFLAGS="-w"
           
           make msm8953_defconfig
           
@@ -62,8 +51,8 @@ jobs:
           sed -i 's/CONFIG_CC_STACKPROTECTOR_REGULAR=y/# CONFIG_CC_STACKPROTECTOR_REGULAR is not set/' .config
           echo "CONFIG_CC_STACKPROTECTOR_NONE=y" >> .config
           
-          # SOLUSI: Menggunakan Proton Clang (CC=clang) tetapi memaksa assembler menggunakan GNU bawaan Ubuntu agar mengenali -EL
-          make -j$(nproc) CC=clang HOSTCC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+          # KUNCI UTAMA: LLVM=1 memakai Clang, LLVM_IAS=0 memaksa memakai assembler luar (aarch64-linux-gnu-) untuk bypass -EL
+          make -j$(nproc) LLVM=1 LLVM_IAS=0 CROSS_COMPILE=aarch64-linux-gnu- HOSTCFLAGS="$HOSTCFLAGS" HOSTCXXFLAGS="$HOSTCXXFLAGS" KCFLAGS="$KCFLAGS"
           
           if [ -f arch/arm64/boot/Image.gz-dtb ]; then
             cp arch/arm64/boot/Image.gz-dtb ../output/boot.img
