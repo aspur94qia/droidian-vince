@@ -1,4 +1,4 @@
-name: Fast Build Droidian A12 for Vince
+name: Build Genuine Droidian Rootfs for Vince
 on:
   workflow_dispatch:
 jobs:
@@ -13,40 +13,30 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y qemu-user-static debootstrap arch-test git aria2 \
             zstd android-sdk-libsparse-utils ext4utils
-
-      - name: Clone Droidian Build Tools
+      
+      - name: Clone Droidian Developer Tools
         run: |
           git clone https://github.com tools
           
-      - name: Download Prebuilt Stable Kernel & Droidian Component
+      - name: Build Authentic Droidian System Image
         run: |
           mkdir -p output
           
-          # CARA CEPAT: Mengunduh Boot Image Android 12 Vince yang sudah matang & stabil
-          # (Menggunakan direct link cepat dari server LineageOS/GSI prebuilt resmi)
-          aria2c -s 16 -x 16 -k 1M -o output/boot.img \
-            "https://droidian.org" || \
-            echo "Membuat boot image fallback..." && touch output/boot.img
-      
-      - name: Build Genuine Droidian Rootfs & GSI Image
-        run: |
-          # Mengeksekusi pembuatan sistem operasi Droidian Bookworm (Debian 12) asli untuk arsitektur Vince
+          # Membuat sistem operasi Droidian asli (Debian Bookworm) menggunakan arsitektur ARM64
+          # Skrip ini akan mengunduh paket Debian murni dan mengonfigurasinya untuk Halium
           sudo ./tools/developer/droidian-build-rootfs \
             --architecture arm64 \
             --distribution bookworm \
-            --components "vince,halium,gnome" \
             --output output/droidian_gsi_vince.img \
-            --size 2000M || true
+            --size 2000M
             
-          # Jika skrip releng membutuhkan manifestasi, buat citra sistem ext4 murni agar aman flash
+          # Memastikan file sistem berhasil dibuat dan bukan berukuran 0 bytes
           if [ ! -s output/droidian_gsi_vince.img ]; then
-            echo "Membuat Rootfs Mandiri Droidian..."
-            dd if=/dev/zero of=output/droidian_gsi_vince.img bs=1M count=1800
-            mkfs.ext4 -F output/droidian_gsi_vince.img
+            echo "Gagal membangun Rootfs Droidian asli!" && exit 1
           fi
       
-      - name: Upload Finished Artifacts
+      - name: Upload Droidian System Image
         uses: actions/upload-artifact@v4
         with:
-          name: Droidian-A12-Vince-FastBuild
+          name: Droidian-Rootfs-Vince
           path: output/
