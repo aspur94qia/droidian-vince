@@ -66,6 +66,9 @@ jobs:
           sed -i 's/CONFIG_CC_STACKPROTECTOR_REGULAR=y/# CONFIG_CC_STACKPROTECTOR_REGULAR is not set/' .config
           echo "CONFIG_CC_STACKPROTECTOR_NONE=y" >> .config
           
+          # FIX ERROR: Mematikan driver btfm_slim yang kehilangan file header btfm_slim.h
+          sed -i 's/CONFIG_MSM_BTFM_SLIM=y/# CONFIG_MSM_BTFM_SLIM is not set/' .config
+          
           # Eksekusi kompilasi aman dan murni menggunakan Google GCC resmi
           make -j$(nproc) HOSTCFLAGS="$HOSTCFLAGS" HOSTCXXFLAGS="$HOSTCXXFLAGS" KCFLAGS="$KCFLAGS"
           
