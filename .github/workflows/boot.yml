@@ -7,12 +7,13 @@ jobs:
     container:
       image: ubuntu:20.04
     steps:
-      - uses: actions/checkout@v4
-      - name: Install deps in 20.04 container
+      - name: Install deps
         run: |
-          export DEBIAN_FRONTEND=noninteractive
           apt-get update
-          apt-get install -y git gcc-aarch64-linux-gnu bc bison flex libssl-dev libelf-dev wget python3 xz-utils tar gzip
+          apt-get install -y build-essential git gcc-aarch64-linux-gnu bc bison flex libssl-dev libelf-dev wget python3 xz-utils tar gzip ca-certificates
+          aarch64-linux-gnu-gcc --version
+          make --version
+      - uses: actions/checkout@v4
       - name: Clone kernel
         run: |
           rm -rf kernel
@@ -24,23 +25,21 @@ jobs:
           echo "# dummy" > net/wireguard/Kconfig
           sed -i 's/YYLTYPE yylloc/extern YYLTYPE yylloc/' scripts/dtc/dtc-lexer.lex.c_shipped || true
           cat arch/arm64/configs/vince-perf_defconfig > arch/arm64/configs/droidian_defconfig
-          echo "CONFIG_DEVTMPFS=y" >> arch/arm64/configs/droidian_defconfig
-          echo "CONFIG_DEVTMPFS_MOUNT=y" >> arch/arm64/configs/droidian_defconfig
-          echo "CONFIG_OVERLAY_FS=y" >> arch/arm64/configs/droidian_defconfig
-          echo "CONFIG_WIREGUARD=n" >> arch/arm64/configs/droidian_defconfig
-          echo "CONFIG_DEBUG_INFO=n" >> arch/arm64/configs/droidian_defconfig
+          printf "CONFIG_DEVTMPFS=y\nCONFIG_DEVTMPFS_MOUNT=y\nCONFIG_OVERLAY_FS=y\nCONFIG_WIREGUARD=n\nCONFIG_DEBUG_INFO=n\n" >> arch/arm64/configs/droidian_defconfig
       - name: Build
         run: |
           cd kernel
           make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- droidian_defconfig
           make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j4 Image.gz dtbs
           cat arch/arm64/boot/Image.gz arch/arm64/boot/dts/qcom/msm8953-vince*.dtb > ../Image.gz-dtb
+          ls -lh ../Image.gz-dtb
       - name: Make boot.img
         run: |
           echo -n | gzip > ramdisk.cpio.gz
           wget -q https://github.com/osm0x/android-prebuilt-mkbootimg/releases/download/20200505/mkbootimg -O mkbootimg
           chmod +x mkbootimg
           ./mkbootimg --kernel Image.gz-dtb --ramdisk ramdisk.cpio.gz --base 0x80000000 --kernel_offset 0x00008000 --ramdisk_offset 0x01000000 --tags_offset 0x00000100 --pagesize 2048 --cmdline "androidboot.hardware=qcom msm_rtb.filter=0x237 ehci-hcd.park=3 androidboot.bootdevice=7824900.sdhci androidboot.selinux=permissive droidian.lvm.prefer" -o boot-vince-A13-droidian.img
+          ls -lh boot-vince-A13-droidian.img
       - uses: actions/upload-artifact@v4
         with:
           name: boot-working-vince
