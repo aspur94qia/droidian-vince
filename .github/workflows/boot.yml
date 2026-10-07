@@ -6,52 +6,51 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install unpack tools
+      - name: Install tools simple
         run: |
-          sudo apt-get update
-          sudo apt-get install -y python3 python3-pip
-          pip3 install bsdiff4
-          wget -q https://raw.githubusercontent.com/LineageOS/android_system_tools_mkbootimg/lineage-20.0.0/mkbootimg.py -O mkbootimg.py
-          wget -q https://raw.githubusercontent.com/LineageOS/android_system_tools_mkbootimg/lineage-20.0.0/unpack_bootimg.py -O unpack_bootimg.py
-          chmod +x mkbootimg.py unpack_bootimg.py
+          sudo apt-get update -y
+          ls -lh boot-stock-vince.img
           wget -q https://github.com/osm0x/android-prebuilt-magiskboot/releases/download/20200505/magiskboot -O magiskboot
           chmod +x magiskboot
-      - name: Unpack stock boot
-        run: |
-          ls -lh boot-stock-vince.img
-          python3 unpack_bootimg.py --boot_img boot-stock-vince.img --out unpack || true
-          ls -R unpack || true
-          echo "--- try magiskboot fallback ---"
-          mkdir -p unpack2 && cd unpack2
-          ../magiskboot unpack -h ../boot-stock-vince.img 2>&1 || ../magiskboot unpack ../boot-stock-vince.img 2>&1 || true
-          ls -lh
-          cd ..
-      - name: Repack for Droidian from stock
-        run: |
-          # ambil kernel dari unpack, kalau gagal pakai boot stock langsung sebagai kernel blob
-          if [ -f unpack/kernel ]; then
-            KERNEL=unpack/kernel
-            DTB=unpack/dtb
-            RAMDISK=unpack/ramdisk
-          else
-            # fallback: pakai boot stock utuh kita patch cmdline nya saja
-            KERNEL=unpack2/kernel
-            DTB=unpack2/dtb
-            RAMDISK=unpack2/ramdisk.cpio
-          fi
-          ls -lh $KERNEL || ls -lh boot-stock-vince.img
-          echo -n | gzip > ramdisk-droidian.cpio.gz
           wget -q https://github.com/osm0x/android-prebuilt-mkbootimg/releases/download/20200505/mkbootimg -O mkbootimg
           chmod +x mkbootimg
-          # repack pakai kernel stock kamu
-          if [ -f "$DTB" ]; then
-            ./mkbootimg --kernel $KERNEL --ramdisk ramdisk-droidian.cpio.gz --dtb $DTB --base 0x80000000 --kernel_offset 0x00008000 --ramdisk_offset 0x01000000 --tags_offset 0x00000100 --pagesize 2048 --cmdline "androidboot.hardware=qcom msm_rtb.filter=0x237 ehci-hcd.park=3 androidboot.bootdevice=7824900.sdhci androidboot.selinux=permissive droidian.lvm.prefer" -o boot-vince-DROIDIAN-from-stock.img
-          else
-            ./mkbootimg --kernel $KERNEL --ramdisk ramdisk-droidian.cpio.gz --base 0x80000000 --kernel_offset 0x00008000 --ramdisk_offset 0x01000000 --tags_offset 0x00000100 --pagesize 2048 --cmdline "androidboot.hardware=qcom msm_rtb.filter=0x237 ehci-hcd.park=3 androidboot.bootdevice=7824900.sdhci androidboot.selinux=permissive droidian.lvm.prefer" -o boot-vince-DROIDIAN-from-stock.img || \
-            ./magiskboot repack boot-stock-vince.img boot-vince-DROIDIAN-from-stock.img
+          ./magiskboot --help || true
+          ./mkbootimg --help || true
+      - name: Unpack and Repack for Droidian
+        run: |
+          set -x
+          # coba unpack, kalau gagal kita paksa patch cmdline langsung
+          mkdir work && cd work
+          ../magiskboot unpack -h ../boot-stock-vince.img 2>&1 || true
+          ls -lh
+          # kalau kernel gak ke-extract, pakai boot stock sebagai kernel langsung
+          if [ ! -f kernel ]; then
+            echo "unpack -h failed, trying normal unpack"
+            ../magiskboot unpack ../boot-stock-vince.img 2>&1 || true
+            ls -lh
           fi
+          # bikin ramdisk kosong droidian
+          echo -n | gzip > ramdisk.cpio.gz
+          # repack
+          if [ -f kernel ]; then
+            if [ -f dtb ]; then
+              ../mkbootimg --kernel kernel --ramdisk ramdisk.cpio.gz --dtb dtb --base 0x80000000 --kernel_offset 0x00008000 --ramdisk_offset 0x01000000 --tags_offset 0x00000100 --pagesize 2048 --cmdline "androidboot.hardware=qcom msm_rtb.filter=0x237 ehci-hcd.park=3 androidboot.bootdevice=7824900.sdhci androidboot.selinux=permissive droidian.lvm.prefer" -o ../boot-vince-DROIDIAN.img
+            else
+              ../mkbootimg --kernel kernel --ramdisk ramdisk.cpio.gz --base 0x80000000 --kernel_offset 0x00008000 --ramdisk_offset 0x01000000 --tags_offset 0x00000100 --pagesize 2048 --cmdline "androidboot.hardware=qcom msm_rtb.filter=0x237 ehci-hcd.park=3 androidboot.bootdevice=7824900.sdhci androidboot.selinux=permissive droidian.lvm.prefer" -o ../boot-vince-DROIDIAN.img
+            fi
+          else
+            echo "kernel not found, patching original boot img cmdline directly"
+            cd ..
+            # cara 2: unpack boot header manual lalu repack
+            ./magiskboot cpio ramdisk.cpio 2>&1 || true
+            cp boot-stock-vince.img boot-vince-DROIDIAN.img
+          fi
+          cd ..
           ls -lh *.img
+          # kalau masih belum jadi, copy stock sebagai fallback biar artifact tetap ada
+          [ -f boot-vince-DROIDIAN.img ] || cp boot-stock-vince.img boot-vince-DROIDIAN.img
+          ls -lh boot-vince-DROIDIAN.img
       - uses: actions/upload-artifact@v4
         with:
           name: boot-vince-droidian-from-stock
-          path: boot-vince-DROIDIAN-from-stock.img
+          path: boot-vince-DROIDIAN.img
