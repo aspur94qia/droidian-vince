@@ -1,0 +1,17 @@
+# Build
+*.img
+*.zip
+*.log
+out/
+build/
+obj/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

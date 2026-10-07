@@ -1,0 +1,277 @@
+name: Build Halium for Vince - Flash to Userdata
+
+on:
+  workflow_dispatch:
+    inputs:
+      halium_branch:
+        description: 'Halium branch'
+        required: false
+        default: 'halium-11.0'
+
+env:
+  WORKSPACE: ${{ github.workspace }}
+  CCACHE_DIR: /tmp/ccache
+  CCACHE_SIZE: 15G
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 600
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git repo build-essential python3 python3-pip \
+            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
+            bc bison flex ccache rsync zip unzip wget curl \
+            android-tools-adb android-tools-fastboot \
+            openjdk-11-jdk device-tree-compiler \
+            libncurses5-dev libssl-dev lzop lz4 \
+            libxml2-utils imagemagick libc6-i386 \
+            libstdc++6:i386 zlib1g:i386
+
+          ccache -M 15G
+
+      - name: Create build workspace
+        run: |
+          mkdir -p ${WORKSPACE}/halium-build
+          cd ${WORKSPACE}/halium-build
+          pwd
+
+      - name: Initialize Halium 11
+        run: |
+          cd ${WORKSPACE}/halium-build
+          git config --global user.email "builder@actions.github.com"
+          git config --global user.name "GitHub Actions Builder"
+          
+          echo "=== Initializing Halium 11.0 repo ==="
+          repo init -u https://github.com/Halium/android.git -b halium-11.0 --depth=1 -q
+          
+          echo "=== Syncing repo (this will take 30-60 minutes) ==="
+          repo sync -j8 -c --no-clone-bundle -q
+          
+          echo "=== Repo sync completed ==="
+
+      - name: Clone device tree
+        run: |
+          cd ${WORKSPACE}/halium-build
+          mkdir -p device/xiaomi
+          
+          echo "Cloning LineageOS device tree for vince..."
+          git clone https://github.com/LineageOS/android_device_xiaomi_vince.git device/xiaomi/vince --depth=1 -b lineage-20.0 -q
+          
+          echo "Device tree cloned"
+          ls -la device/xiaomi/vince/
+
+      - name: Clone kernel
+        run: |
+          cd ${WORKSPACE}/halium-build
+          mkdir -p kernel/xiaomi
+          
+          echo "Cloning Xiaomi kernel 4.9..."
+          git clone https://github.com/MiCode/Xiaomi_Kernel_OpenSource.git kernel/xiaomi/msm8953 --depth=1 -b vince-o-oss -q
+          
+          echo "Kernel cloned"
+
+      - name: Clone vendor blobs
+        run: |
+          cd ${WORKSPACE}/halium-build
+          mkdir -p vendor/xiaomi
+          
+          echo "Cloning vendor blobs..."
+          git clone https://github.com/TheMuppets/proprietary_vendor_xiaomi.git vendor/xiaomi --depth=1 -b lineage-20.0 -q
+          
+          echo "Vendor blobs ready"
+
+      - name: Validate device tree
+        run: |
+          cd ${WORKSPACE}/halium-build
+          
+          echo "=== Validating device tree ==="
+          
+          if [ ! -f device/xiaomi/vince/BoardConfig.mk ]; then
+            echo "ERROR: BoardConfig.mk not found"
+            exit 1
+          fi
+          
+          if [ ! -f device/xiaomi/vince/device.mk ] && [ ! -f device/xiaomi/vince/lineage.mk ]; then
+            echo "ERROR: device.mk or lineage.mk not found"
+            exit 1
+          fi
+          
+          if [ ! -f device/xiaomi/vince/recovery.fstab ]; then
+            echo "ERROR: recovery.fstab not found"
+            exit 1
+          fi
+          
+          echo "✓ Device tree validated"
+          echo ""
+          echo "Device tree contents:"
+          ls -lh device/xiaomi/vince/
+
+      - name: Setup build environment
+        run: |
+          cd ${WORKSPACE}/halium-build
+          
+          echo "=== Setting up build environment ==="
+          source build/envsetup.sh
+          
+          echo "✓ Environment ready"
+
+      - name: Lunch device
+        run: |
+          cd ${WORKSPACE}/halium-build
+          
+          echo "=== Lunching vince device ==="
+          source build/envsetup.sh
+          breakfast vince
+          
+          echo "✓ Device lunch complete"
+
+      - name: Build halium-boot.img
+        run: |
+          cd ${WORKSPACE}/halium-build
+          
+          export CCACHE_DIR=/tmp/ccache
+          export USE_CCACHE=1
+          export CCACHE_COMPRESS=1
+          
+          source build/envsetup.sh
+          breakfast vince
+          
+          echo "=== Building halium-boot.img (this will take 20-40 minutes) ==="
+          mka halium-boot -j$(nproc) 2>&1 | tail -50
+          
+          if [ -f out/target/product/vince/halium-boot.img ]; then
+            echo ""
+            echo "✓✓✓ halium-boot.img built successfully ✓✓✓"
+            ls -lh out/target/product/vince/halium-boot.img
+          else
+            echo "ERROR: halium-boot.img not found"
+            exit 1
+          fi
+
+      - name: Build system.img
+        run: |
+          cd ${WORKSPACE}/halium-build
+          
+          export CCACHE_DIR=/tmp/ccache
+          export USE_CCACHE=1
+          
+          source build/envsetup.sh
+          
+          echo "=== Building system.img (this will take 30-60 minutes) ==="
+          mka systemimage -j$(nproc) 2>&1 | tail -50
+          
+          if [ -f out/target/product/vince/system.img ]; then
+            echo ""
+            echo "✓✓✓ system.img built successfully ✓✓✓"
+            ls -lh out/target/product/vince/system.img
+          else
+            echo "ERROR: system.img not found"
+            exit 1
+          fi
+
+      - name: Prepare flash artifacts
+        run: |
+          mkdir -p ${WORKSPACE}/flash-files
+          
+          echo "=== Preparing flash files ==="
+          
+          cp ${WORKSPACE}/halium-build/out/target/product/vince/halium-boot.img ${WORKSPACE}/flash-files/halium-boot.img
+          cp ${WORKSPACE}/halium-build/out/target/product/vince/system.img ${WORKSPACE}/flash-files/droidian-system.img
+          
+          cd ${WORKSPACE}/flash-files
+          
+          echo "=== Creating checksums ==="
+          sha256sum *.img > checksums.txt
+          cat checksums.txt
+          
+          echo ""
+          echo "Files ready:"
+          ls -lh
+
+      - name: Create flash to userdata script
+        run: |
+          cat > ${WORKSPACE}/flash-files/FLASH-USERDATA.sh << 'FLASHUSERDATA'
+          #!/bin/bash
+          set -e
+          
+          clear
+          echo "╔════════════════════════════════════════════════════════╗"
+          echo "║    Dual Boot Setup: Android 13 + Droidian (Userdata)   ║"
+          echo "║         Xiaomi Redmi 5 Plus (vince)                   ║"
+          echo "╚════════════════════════════════════════════════════════╝"
+          echo ""
+          echo "This script will:"
+          echo "✓ Keep Android 13 INTACT on /system partition"
+          echo "✓ Install Droidian to /data partition (userdata)"
+          echo ""
+          echo "⚠️  /data akan dihapus dan diganti dengan Droidian"
+          echo "⚠️  Android 13 tetap aman di /system"
+          echo ""
+          
+          read -p "Are you ready? (type 'yes' to confirm): " confirm
+          if [ "$confirm" != "yes" ]; then
+            echo "Aborted"
+            exit 0
+          fi
+          
+          echo ""
+          echo "=== Step 1: Connecting to device ==="
+          adb devices
+          
+          echo ""
+          echo "=== Step 2: Rebooting to bootloader ==="
+          adb reboot bootloader
+          sleep 8
+          
+          echo ""
+          echo "=== Step 3: Checking fastboot ==="
+          fastboot devices
+          
+          echo ""
+          echo "=== Step 4: Flashing halium-boot.img to /boot ==="
+          fastboot flash boot halium-boot.img
+          echo "✓ Boot partition flashed"
+          
+          echo ""
+          echo "=== Step 5: Flashing droidian-system.img to /data ==="
+          fastboot flash userdata droidian-system.img
+          echo "✓ Userdata partition flashed"
+          
+          echo ""
+          echo "=== Step 6: Rebooting device ==="
+          fastboot reboot
+          
+          echo ""
+          echo "╔════════════════════════════════════════════════════════╗"
+          echo "║          Dual Boot Setup Complete!                    ║"
+          echo "╚════════════════════════════════════════════════════════╝"
+          echo ""
+          FLASHUSERDATA
+          
+          chmod +x ${WORKSPACE}/flash-files/FLASH-USERDATA.sh
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: vince-dualboot-userdata-ready
+          path: ${{ github.workspace }}/flash-files/
+          retention-days: 30
+
+      - name: Build summary
+        run: |
+          echo ""
+          echo "╔════════════════════════════════════════════════════════╗"
+          echo "║         BUILD COMPLETED - READY TO FLASH              ║"
+          echo "╚════════════════════════════════════════════════════════╝"
+          echo ""
+          echo "✓ Android 13 tetap aman di /system"
+          echo "✓ Droidian akan di /data partition"
+          echo ""
