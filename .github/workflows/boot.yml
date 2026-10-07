@@ -4,12 +4,15 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container:
+      image: ubuntu:20.04
     steps:
       - uses: actions/checkout@v4
-      - name: Install deps
+      - name: Install deps in 20.04 container
         run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu bc bison flex libssl-dev libelf-dev xz-utils zstd
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y git gcc-aarch64-linux-gnu bc bison flex libssl-dev libelf-dev wget python3 xz-utils tar gzip
       - name: Clone kernel
         run: |
           rm -rf kernel
@@ -32,7 +35,7 @@ jobs:
           make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- droidian_defconfig
           make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j4 Image.gz dtbs
           cat arch/arm64/boot/Image.gz arch/arm64/boot/dts/qcom/msm8953-vince*.dtb > ../Image.gz-dtb
-      - name: Make boot
+      - name: Make boot.img
         run: |
           echo -n | gzip > ramdisk.cpio.gz
           wget -q https://github.com/osm0x/android-prebuilt-mkbootimg/releases/download/20200505/mkbootimg -O mkbootimg
