@@ -64,6 +64,12 @@ jobs:
           echo "== $f"
           sudo cat "$f"
 
+      - name: Ambil mkbootimg AOSP
+        run: |
+          set -eux
+          git clone --depth 1 https://android.googlesource.com/platform/system/tools/mkbootimg mkbootimg-src || git clone --depth 1 https://github.com/aosp-mirror/platform_system_tools_mkbootimg mkbootimg-src
+          ls mkbootimg-src mkbootimg-src/gki
+
       - name: Repack boot
         run: |
           set -eux
@@ -82,7 +88,7 @@ jobs:
                   out.append(a[i]); i += 1
           out += ['-o', 'boot-vince-DROIDIAN.img']
           print(out)
-          subprocess.run(['mkbootimg'] + out, check=True)
+          subprocess.run(['python3', 'mkbootimg-src/mkbootimg.py'] + out, check=True)
           PY
           ls -lh boot-vince-DROIDIAN.img
           SZ=$(stat -c %s boot-vince-DROIDIAN.img)
