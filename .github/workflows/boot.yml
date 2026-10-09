@@ -11,8 +11,10 @@ jobs:
         run: |
           set -eux
           sudo apt-get update -y
-          sudo apt-get install -y android-tools-mkbootimg cpio file python3 \
+          sudo apt-get install -y mkbootimg cpio file python3 \
             debootstrap debian-archive-keyring qemu-user-static binfmt-support dpkg-dev git
+          command -v mkbootimg
+          command -v unpack_bootimg
 
       - name: Unpack boot stock
         run: |
