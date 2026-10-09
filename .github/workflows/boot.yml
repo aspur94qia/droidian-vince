@@ -80,7 +80,9 @@ jobs:
           out = []
           i = 0
           while i < len(a):
-              if a[i] == '--ramdisk':
+              if a[i] == '--kernel':
+                  out += ['--kernel', 'kernel-new/kernel']; i += 2
+              elif a[i] == '--ramdisk':
                   out += ['--ramdisk', 'new-ramdisk.img']; i += 2
               elif a[i] == '--cmdline':
                   out += ['--cmdline', a[i+1] + ' androidboot.selinux=permissive']; i += 2
@@ -95,7 +97,7 @@ jobs:
           [ "$SZ" -le 33554432 ] || { echo "boot terlalu besar: $SZ"; exit 1; }
           mkdir -p check
           unpack_bootimg --boot_img boot-vince-DROIDIAN.img --out check
-          cmp stock/kernel check/kernel
+          cmp kernel-new/kernel check/kernel
           cmp new-ramdisk.img check/ramdisk
           echo "SUCCESS"
 
