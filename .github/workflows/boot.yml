@@ -1,0 +1,90 @@
+name: build-boot-vince-working
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          set -eux
+          sudo apt-get update -y
+          sudo apt-get install -y android-tools-mkbootimg cpio file python3 \
+            debootstrap debian-archive-keyring qemu-user-static binfmt-support dpkg-dev git
+
+      - name: Unpack boot stock
+        run: |
+          set -eux
+          test -f boot-stock-vince.img
+          file boot-stock-vince.img
+          mkdir -p stock
+          unpack_bootimg --boot_img boot-stock-vince.img --out stock --format=mkbootimg > stock/args.txt
+          cat stock/args.txt
+          ls -lh stock
+
+      - name: Cek config kernel stock (info saja)
+        run: |
+          python3 - <<'PY'
+          import zlib
+          d = open('stock/kernel', 'rb').read()
+          try:
+              raw = zlib.decompressobj(31).decompress(d)
+          except Exception:
+              raw = d
+          i = raw.find(b'IKCFG_ST')
+          if i < 0:
+              print('IKCONFIG tidak ada di kernel, cek manual')
+              raise SystemExit
+          cfg = zlib.decompressobj(31).decompress(raw[i+8:]).decode(errors='ignore')
+          need = ['NAMESPACES','PID_NS','NET_NS','UTS_NS','IPC_NS','USER_NS','DEVTMPFS',
+                  'CGROUPS','CGROUP_DEVICE','VETH','BRIDGE','FHANDLE','OVERLAY_FS','SQUASHFS','EXT4_FS']
+          for n in need:
+              ok = ('CONFIG_%s=y' % n) in cfg
+              print(('OK      ' if ok else 'KURANG  ') + 'CONFIG_' + n)
+          PY
+
+      - name: Build initrd Halium (arm64)
+        run: |
+          set -eux
+          git clone --depth 1 https://github.com/Halium/initramfs-tools-halium
+          cd initramfs-tools-halium
+          sudo RELEASE=bookworm ./build-initrd.sh -a arm64
+          ls -lh out
+          test -s out/initrd.img-touch-arm64
+
+      - name: Repack boot
+        run: |
+          set -eux
+          cp initramfs-tools-halium/out/initrd.img-touch-arm64 new-ramdisk.img
+          python3 - <<'PY'
+          import shlex, subprocess
+          a = shlex.split(open('stock/args.txt').read())
+          out = []
+          i = 0
+          while i < len(a):
+              if a[i] == '--ramdisk':
+                  out += ['--ramdisk', 'new-ramdisk.img']; i += 2
+              elif a[i] == '--cmdline':
+                  out += ['--cmdline', a[i+1] + ' androidboot.selinux=permissive']; i += 2
+              else:
+                  out.append(a[i]); i += 1
+          out += ['-o', 'boot-vince-DROIDIAN.img']
+          print(out)
+          subprocess.run(['mkbootimg'] + out, check=True)
+          PY
+          ls -lh boot-vince-DROIDIAN.img
+          SZ=$(stat -c %s boot-vince-DROIDIAN.img)
+          [ "$SZ" -le 33554432 ] || { echo "boot terlalu besar: $SZ"; exit 1; }
+          mkdir -p check
+          unpack_bootimg --boot_img boot-vince-DROIDIAN.img --out check
+          cmp stock/kernel check/kernel
+          cmp new-ramdisk.img check/ramdisk
+          echo "SUCCESS"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: boot-vince-droidian-from-stock
+          path: boot-vince-DROIDIAN.img
+          if-no-files-found: error
