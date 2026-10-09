@@ -57,6 +57,13 @@ jobs:
           ls -lh out
           test -s out/initrd.img-touch-arm64
 
+      - name: Debug hook halium
+        if: failure()
+        run: |
+          f=$(sudo find initramfs-tools-halium -path "*hooks/halium" -type f | head -1)
+          echo "== $f"
+          sudo cat "$f"
+
       - name: Repack boot
         run: |
           set -eux
