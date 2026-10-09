@@ -15,6 +15,7 @@ jobs:
             debootstrap debian-archive-keyring qemu-user-static binfmt-support dpkg-dev git
           command -v mkbootimg
           command -v unpack_bootimg
+
       - name: Unpack boot stock
         run: |
           set -eux
@@ -24,6 +25,7 @@ jobs:
           unpack_bootimg --boot_img boot-stock-vince.img --out stock --format=mkbootimg > stock/args.txt
           cat stock/args.txt
           ls -lh stock
+
       - name: Cek config kernel stock (info saja)
         run: |
           python3 - <<'PY'
@@ -45,6 +47,7 @@ jobs:
               ok = ('CONFIG_%s=y' % n) in cfg
               print(('OK ' if ok else 'KURANG ') + 'CONFIG_' + n)
           PY
+
       - name: Build initrd Halium (arm64)
         run: |
           set -eux
@@ -54,17 +57,20 @@ jobs:
           sudo RELEASE=bookworm./build-initrd.sh -a arm64
           ls -lh out
           test -s out/initrd.img-touch-arm64
+
       - name: Debug hook halium
         if: failure()
         run: |
           f=$(sudo find initramfs-tools-halium -path "*hooks/halium" -type f | head -1)
           echo "== $f"
           sudo cat "$f"
+
       - name: Ambil mkbootimg AOSP
         run: |
           set -eux
           git clone --depth 1 https://android.googlesource.com/platform/system/tools/mkbootimg mkbootimg-src || git clone --depth 1 https://github.com/aosp-mirror/platform_system_tools_mkbootimg mkbootimg-src
           ls mkbootimg-src mkbootimg-src/gki
+
       - name: Repack boot
         run: |
           set -eux
@@ -95,6 +101,7 @@ jobs:
           cmp kernel-new/kernel check/kernel
           cmp new-ramdisk.img check/ramdisk
           echo "SUCCESS"
+
       - uses: actions/upload-artifact@v4
         with:
           name: boot-vince-droidian-from-stock
