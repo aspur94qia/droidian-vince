@@ -1,0 +1,57 @@
+name: droidian-kernel
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Alat
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y mkbootimg python3
+      - name: Baca boot stock
+        run: |
+          set -eux
+          test -f boot-stock-vince.img
+          mkdir -p stock
+          unpack_bootimg --boot_img boot-stock-vince.img --out stock --format=mkbootimg > stock/args.txt
+          cat stock/args.txt
+      - name: Ambil kernel dan tambah config
+        run: |
+          set -eux
+          git clone --depth=50 -b halium-11 https://github.com/ubports-on-vince/android_kernel_xiaomi_vince sources
+          cat kernel/droidian.fragment >> sources/arch/arm64/configs/vince-perf_defconfig
+          cd sources
+          git checkout -b droidian
+          git -c user.name=ci -c user.email=ci@example.com commit -am "droidian config"
+      - name: Buat kernel-info
+        run: python3 droidian/gen-info.py
+      - name: Build di container Droidian
+        run: |
+          set -ex
+          mkdir -p packages
+          docker run --rm \
+            -v "$PWD/packages:/buildd" \
+            -v "$PWD/sources:/buildd/sources" \
+            -v "$PWD/droidian:/droidian" \
+            quay.io/droidian/build-essential:trixie-amd64 \
+            bash /droidian/docker-build.sh
+      - name: Cek config
+        if: always()
+        run: |
+          for c in PID_NS UTS_NS IPC_NS USER_NS DEVTMPFS CGROUP_DEVICE VETH FHANDLE SQUASHFS; do
+            if grep -q "^CONFIG_$c=y" sources/out/KERNEL_OBJ/.config; then echo "OK   $c"; else echo "KURANG $c"; fi
+          done
+      - name: Kumpulkan
+        if: always()
+        run: |
+          mkdir -p hasil
+          find packages sources/out -name "*.deb" -exec cp {} hasil/ \; || true
+          find packages sources/out -name "boot.img" -exec cp {} hasil/ \; || true
+          ls -lh hasil
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: droidian-kernel-vince
+          path: hasil/
