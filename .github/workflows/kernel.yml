@@ -1,0 +1,51 @@
+name: kernel
+on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: "URL repo sumber kernel vince"
+        required: true
+      branch:
+        description: "Branch"
+        required: true
+      defconfig:
+        description: "Defconfig"
+        default: "vince_defconfig"
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependensi
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi \
+            bc bison flex libssl-dev libelf-dev device-tree-compiler python3 cpio xz-utils
+      - name: Ambil sumber kernel
+        run: git clone --depth=1 -b "${{ inputs.branch }}" "${{ inputs.repo }}" src
+      - name: Build
+        working-directory: src
+        run: |
+          export ARCH=arm64 SUBARCH=arm64
+          export CROSS_COMPILE=aarch64-linux-gnu-
+          export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+          export KCFLAGS="-Wno-error"
+          make O=out ${{ inputs.defconfig }}
+          ./scripts/kconfig/merge_config.sh -m -O out out/.config ../kernel/droidian.fragment
+          make O=out olddefconfig
+          make O=out -j$(nproc) 2>&1 | tail -n 200
+      - name: Cek config akhir
+        working-directory: src
+        run: |
+          for c in PID_NS UTS_NS IPC_NS USER_NS DEVTMPFS CGROUP_DEVICE VETH FHANDLE SQUASHFS; do
+            if grep -q "^CONFIG_$c=y" out/.config; then echo "OK   $c"; else echo "KURANG $c"; fi
+          done
+      - name: Kumpulkan hasil
+        run: |
+          mkdir -p hasil
+          cp src/out/arch/arm64/boot/Image.gz-dtb hasil/ || cp src/out/arch/arm64/boot/Image.gz hasil/
+          cp src/out/.config hasil/config-final
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kernel-vince-droidian
+          path: hasil/
