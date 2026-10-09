@@ -52,6 +52,7 @@ jobs:
           set -eux
           git clone --depth 1 https://github.com/Halium/initramfs-tools-halium
           cd initramfs-tools-halium
+          bash "$GITHUB_WORKSPACE/patch-initrd.sh"
           sudo RELEASE=bookworm ./build-initrd.sh -a arm64
           ls -lh out
           test -s out/initrd.img-touch-arm64
